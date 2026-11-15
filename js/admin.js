@@ -184,10 +184,10 @@
   }
   function scheduleHtml() {
     const n = pendingJobs().length;
-    const head = `<div class="toolbar sched__bar"><div class="tabs2 tabs2--sub"><button class="${S.sub === 'appts' ? 'active' : ''}" data-sub="appts">${HW.t('a_appts')}</button><button class="${S.sub === 'requests' ? 'active' : ''}" data-sub="requests">${HW.t('a_requests')}${n ? ` <em class="dotn">${n}</em>` : ''}</button></div><button class="btn btn--gold" data-act="add-appt">+ ${HW.t('a_add_appt')}</button></div>`;
-    if (S.sub === 'requests') return head + requestsHtml();
+    const head = `<div class="toolbar sched__bar"><div class="tabs2 tabs2--sub"><button class="${S.sub === 'appts' ? 'active' : ''}" data-sub="appts">${HW.t('a_appts')}${n ? ` <em class="dotn">${n}</em>` : ''}</button><button class="${S.sub === 'walkin' ? 'active' : ''}" data-sub="walkin">${HW.t('a_walkin')}</button></div></div>`;
+    if (S.sub === 'walkin') return head + `<p class="muted small">${HW.t('a_walkin_p')}</p><div id="walkinHost" class="walkin panel"></div>`;
     const days = Array.from({ length: 14 }, (_, i) => startOfDay(new Date(Date.now() + i * 86400000)));
-    return head + `<div class="sched">${days.map((d) => {
+    return head + (n ? `<h3 class="sched__h">${HW.t('a_requests')} <span class="sched__n">${n}</span></h3>${requestsHtml()}<h3 class="sched__h">${HW.t('a_appts')}</h3>` : '') + `<div class="sched">${days.map((d) => {
       const closed = HW.sched.isClosedDay(d), list = S.jobs.filter((j) => live(j) && dayKey(j.startFrom) === dayKey(d) && j.status !== 'delivered').sort((x, y) => new Date(x.startFrom) - new Date(y.startFrom));
       return `<section class="panel sched__day ${closed ? 'is-closed' : ''}"><h4><span>${HW.fmtDay(d)}</span> ${closed ? `<span class="pill pill--warn">${HW.t('a_closed')}</span>` : `<span class="sched__tools"><span class="sched__n">${list.length}</span><button class="mini" data-act="add-appt" data-date="${dayKey(d)}" aria-label="${HW.t('a_add_appt')}" title="${HW.t('a_add_appt')}">+</button></span>`}</h4>
         ${list.map((j) => `<div class="sched__row" data-open="${j.id}"><b>${HW.fmtTime(j.startFrom)}</b><span>${carTxt(j.car)}<small class="muted"> · ${esc(j.customer.name)} · ${esc(j.items.map(pname).join(' · '))}</small></span>${stChip(j.status)}
@@ -307,15 +307,20 @@
   const maxDate = () => dayKey(new Date(Date.now() + HW.CONFIG.bookingDays * 86400000));
 
   /* One dialog for both adding and editing an appointment. Pass { edit: job } to edit. */
-  function apptDialog(pre = {}) {
+  function apptDialog(pre = {}, host = null) {
     const edit = pre.edit || null;
     const canTime = !edit || ['pending', 'booked'].includes(edit.status); // once work has started, only details and services change
-    const m = document.createElement('div'); m.className = 'modal';
-    m.innerHTML = `<div class="modal__panel modal__panel--wide"><button type="button" class="modal__x" aria-label="${HW.t('close')}">×</button><h3>${HW.t(edit ? 'a_edit_appt' : 'a_add_appt')}</h3><div id="apBody"></div></div>`;
-    document.body.appendChild(m); document.body.classList.add('modal-open');
-    const close = () => { m.remove(); document.body.classList.remove('modal-open'); };
-    m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('.modal__x')) close(); });
-    const body = m.querySelector('#apBody'), q = (s) => body.querySelector(s);
+    let body, close;
+    if (host) { body = host; host.dataset.lang = HW.lang; close = () => { host.innerHTML = ''; delete host.dataset.lang; }; }
+    else {
+      const m = document.createElement('div'); m.className = 'modal';
+      m.innerHTML = `<div class="modal__panel modal__panel--wide"><button type="button" class="modal__x" aria-label="${HW.t('close')}">×</button><h3>${HW.t(edit ? 'a_edit_appt' : 'a_add_appt')}</h3><div id="apBody"></div></div>`;
+      document.body.appendChild(m); document.body.classList.add('modal-open');
+      close = () => { m.remove(); document.body.classList.remove('modal-open'); };
+      m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('.modal__x')) close(); });
+      body = m.querySelector('#apBody');
+    }
+    const q = (s) => body.querySelector(s);
     const A = { car: null, name: '', phone: '', date: '', time: '', pay: 'cash', notes: '', dur: '', ids: {}, ...pre };
     if (edit) {
       const auto = HW.cartDuration(edit.items, edit.car);
@@ -398,6 +403,7 @@
     const focusId = document.activeElement && document.activeElement.id, selStart = document.activeElement && document.activeElement.selectionStart;
     const newLeads = S.leads.filter((l) => l.status === 'new').length, unpaid = S.jobs.filter((j) => ['ready', 'delivered'].includes(j.status) && !j.paid).length;
     const pendingN = pendingJobs().length, j = S.open && S.jobs.find((x) => x.id === S.open);
+    const keep = S.tab === 'schedule' && S.sub === 'walkin' ? HW.$('#walkinHost') : null; // do not wipe a half-filled walk-in booking
     root.innerHTML = `
       <div class="acct-head"><div><h2>${HW.t(TITLES[S.tab])}</h2></div>
         <div class="btn-row"><a class="btn btn--ghost" href="staff.html">${HW.t('a_staff_board')}</a></div></div>
@@ -405,6 +411,7 @@
       <div class="tabs2 tabs2--scroll">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'active' : ''}" data-tab="${k}">${HW.t(l)}${k === 'leads' && newLeads ? ` <em class="dotn">${newLeads}</em>` : ''}${k === 'schedule' && pendingN ? ` <em class="dotn">${pendingN}</em>` : ''}${k === 'orders' && unpaid ? ` <em class="dotn">${unpaid}</em>` : ''}</button>`).join('')}</div>
       ${{ overview: overviewHtml, orders: ordersHtml, schedule: scheduleHtml, customers: customersHtml, leads: leadsHtml, services: servicesHtml, settings: settingsHtml }[S.tab]()}
       ${j ? drawerHtml(j) : ''}`;
+    { const nh = HW.$('#walkinHost'); if (nh) { if (keep && keep.dataset.lang === HW.lang && keep.children.length) nh.replaceWith(keep); else apptDialog({}, nh); } }
     HW.applyI18n();
     { const dt = HW.$('#dTime'); if (dt) fillSlots(dt, HW.$('#dDate').value, dt.dataset.cur); }
     HW.$$('[data-rtime]').forEach((sl) => fillSlots(sl, HW.$(`[data-rdate="${sl.dataset.rtime}"]`).value, sl.dataset.cur));

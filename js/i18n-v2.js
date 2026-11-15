@@ -3,6 +3,8 @@
   'use strict';
   const I = window.HW.I18N;
   Object.assign(I.ar, {
+    a_walkin: "حجز حضوري",
+    a_walkin_p: "لعميل حضر بنفسه: اختر السيارة ثم الخدمات والموعد.",
     a_view_site: "عرض الموقع",
     st_pending: "بانتظار التأكيد",
     msg_pending: "استلمنا طلب حجزك، وسنؤكد الموعد قريباً. سيظهر التأكيد هنا.",
@@ -236,6 +238,8 @@
     how3_t: 'احجز موعدك', how3_p: 'اختر وقتاً متاحاً وسجّل بحسابك.', how4_t: 'تابع سيارتك', how4_p: 'التقدم والصور والكاميرا من هاتفك.'
   });
   Object.assign(I.en, {
+    a_walkin: "Walk-in booking",
+    a_walkin_p: "For a customer who came in: pick the car, then the services and time.",
     a_view_site: "View website",
     st_pending: "Awaiting confirmation",
     msg_pending: "We received your booking request and will confirm the appointment soon. The confirmation will show here.",
@@ -428,9 +432,9 @@
     free: 'Free', awaiting: 'Awaiting reply', notify_wa: 'Notify customer on WhatsApp', manage: 'Manage', no_consent: 'Customer has not allowed viewing',
     cam_hide: 'Hide camera', cam_show: 'Show camera to customer', adjust_eta: 'Adjust ready-by time', post_update: 'Post an update',
     update_ph: 'Write a note for the customer…', ask_approval: 'Request approval for extra work', approval_ph: 'e.g. Headlight restoration', price_kd: 'Price KD', extra_min_ph: 'Extra minutes',
-    customer_view: 'Customer view', stat_active: 'Active jobs', stat_ready: 'Ready for pickup', stat_today: "Today's bookings", stat_leads: 'New requests',
-    empty_col: 'Nothing here', hide: 'Hide', show: 'Show', no_leads: 'No assistant requests yet.', mark_done: 'Mark handled', reopen: 'Reopen', new: 'New',
-    tab_board: 'Board', tab_leads: 'Requests', tab_pricing: 'Pricing', tab_settings: 'Tools',
+    customer_view: 'Customer view', stat_active: 'Active jobs', stat_ready: 'Ready for pickup', stat_today: "Today's bookings", stat_leads: 'New inquiries',
+    empty_col: 'Nothing here', hide: 'Hide', show: 'Show', no_leads: 'No assistant inquiries yet.', mark_done: 'Mark handled', reopen: 'Reopen', new: 'New',
+    tab_board: 'Board', tab_leads: 'Inquiries', tab_pricing: 'Pricing', tab_settings: 'Tools',
     btn_arrived: 'Car arrived', btn_start: 'Start work', btn_qc: 'Send to QC', btn_ready: 'Mark ready', btn_delivered: 'Delivered',
     pr_mult: 'Price multipliers by car class',
     pr_mult_p: 'Catalog price = class S. Other classes = price × (1 + (multiplier − 1) × service sensitivity). These numbers are placeholders – set your real ones.',

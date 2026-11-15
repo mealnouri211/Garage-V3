@@ -15,3 +15,6 @@ body[data-page="admin"] .adminbar__brand{color:inherit;text-decoration:none}
 .req header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}.req header .pill{margin-inline-start:auto}
 .req p{margin:0}
 @media (max-width:560px){.adminbar__brand b{display:none}}
+
+.sched__h{display:flex;align-items:center;gap:.6rem;margin:1.2rem 0 .8rem;font-size:1.1rem}
+.walkin{padding:1.2rem}
