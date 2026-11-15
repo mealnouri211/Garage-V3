@@ -15,6 +15,7 @@
     if (st === 'cancelled') return `<div class="meta"><small>${HW.t('status')}</small><b>${HW.t('st_cancelled')}</b></div>`;
     if (st === 'delivered') return `<div class="meta"><small>${HW.t('st_delivered')}</small><b>${HW.fmtWhen(j.deliveredAt)}</b></div>`;
     if (st === 'ready') return `<div class="meta"><small>${HW.t('ready_since')}</small><b>${HW.fmtWhen(j.readyAt)}</b></div><div class="meta"><small>${HW.t('open_until')}</small><b>${String(HW.CONFIG.workHours.end).padStart(2, '0')}:00</b></div>`;
+    if (st === 'pending') return `<div class="meta"><small>${HW.t('a_requested_for')}</small><b>${HW.fmtWhen(j.startFrom)}</b></div>`;
     if (st === 'booked') return `<div class="meta"><small>${HW.t('appointment')}</small><b>${HW.fmtWhen(j.startFrom)}</b></div><div class="meta"><small>${HW.t('ready_by')} (${HW.t('est')})</small><b>${HW.fmtWhen(pr.eta)}</b></div>`;
     return `<div class="meta"><small>${HW.t('time_left')}</small><b>≈ ${HW.fmtDur(pr.left)}</b></div><div class="meta"><small>${HW.t('ready_by')}</small><b>${HW.fmtWhen(pr.eta)}</b></div>`;
   }
@@ -57,7 +58,7 @@
     const wa = `https://wa.me/${HW.CONTACT.wa}?text=${encodeURIComponent(`${HW.t('wa_job')} ${job.id} – ${HW.carName(job.car, HW.lang)}`)}`;
 
     root.innerHTML = `
-      ${isNew ? `<div class="banner banner--ok"><b>${HW.t('booked_ok')}</b> ${HW.t('booked_ok_p')}</div>` : ''}
+      ${isNew ? `<div class="banner banner--ok"><b>${HW.t(st === 'pending' ? 'requested_ok' : 'booked_ok')}</b> ${HW.t(st === 'pending' ? 'requested_ok_p' : 'booked_ok_p')}</div>` : ''}
       <div class="job-head"><div><small class="muted" dir="ltr">${job.id}</small><h2>${esc(HW.carName(job.car, HW.lang))}</h2><p class="muted">${job.items.map(pname).join(' · ')}</p></div><span class="status status--${st}">${HW.t('st_' + st)}</span></div>
       <div class="two-col">
         <div class="stack">
@@ -102,7 +103,7 @@
           <div class="sum"><div class="grand"><span>${HW.t('total')}</span><span>${HW.money(job.total)}</span></div></div>
           <a class="btn btn--gold btn--block" target="_blank" rel="noopener" href="${wa}">${HW.t('wa_us')}</a>
           <a class="btn btn--ghost btn--block" href="tel:${HW.CONTACT.tel}">${HW.t('call_us')}</a>
-          ${st === 'booked' ? `<button class="btn btn--ghost btn--block" id="icsBtn">${HW.t('add_calendar')}</button><button class="linklike danger" id="cancelBtn">${HW.t('cancel_booking')}</button>` : ''}
+          ${st === 'booked' ? `<button class="btn btn--ghost btn--block" id="icsBtn">${HW.t('add_calendar')}</button>` : ''}${st === 'booked' || st === 'pending' ? `<button class="linklike danger" id="cancelBtn">${HW.t('cancel_booking')}</button>` : ''}
         </aside>
       </div>`;
     if (canWatch) stopCam = HW.camera.start(HW.$('#camBox'));

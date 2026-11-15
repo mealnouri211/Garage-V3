@@ -27,6 +27,9 @@
          and shows a "DEMO" pill. Set to false when the garage starts using it for real. */
       demoMode: true,
 
+      /* true: a customer booking arrives as a pending request that the owner approves (Schedule tab). false: it is confirmed straight away. */
+      requireApproval: true,
+
       /* Closed days (holidays, Eid…) as 'YYYY-MM-DD'. Editable in the owner back office. */
       closedDates: [],
 

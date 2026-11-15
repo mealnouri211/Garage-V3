@@ -5,7 +5,7 @@
   const bar = (j) => { const pr = HW.jobProgress(j); return `<div class="pbar pbar--sm" role="progressbar" aria-valuenow="${pr.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pr.pct}%"></i></div>`; };
 
   function jobCard(j) {
-    const pr = HW.jobProgress(j), active = HW.ACTIVE.includes(j.status);
+    const pr = HW.jobProgress(j), active = HW.OPEN.includes(j.status);
     const names = j.items.map((i) => { const p = HW.findProduct(i.pid); return p ? HW.L(p.name) : i.pid; }).join(' · ');
     return `<a class="jobcard ${active ? 'active' : ''}" href="job.html?id=${j.id}">
       <div class="jobcard__top"><b dir="ltr">${j.id}</b><span class="status status--${j.status}">${HW.t('st_' + j.status)}</span></div>
@@ -21,7 +21,7 @@
   function render() {
     const root = HW.$('#accountRoot');
     if (!HW.user) { location.replace('login.html?next=account.html'); return; }
-    const active = jobs.filter((j) => HW.ACTIVE.includes(j.status) || j.status === 'ready');
+    const active = jobs.filter((j) => HW.OPEN.includes(j.status) || j.status === 'ready');
     const past = jobs.filter((j) => !active.includes(j));
     const cars = HW.user.cars || [];
     root.innerHTML = `

@@ -11,7 +11,9 @@ V3 stores its data under `hw3_*` keys, so it does not mix with V1/V2 on the same
   - Login: `owner` / `owner1234` (demo). Change it in Settings -> Security (the username must contain a letter).
   - Overview: orders, booked value, collected, still to collect, new requests, "needs attention" list, today's cars, 14-day chart, top services, value by payment method.
   - Orders: search, filters (status / paid / dates), CSV export, detail drawer (customer + WhatsApp/call, change status, mark paid, payment-link message for Deema/Taly, internal note, print job sheet, cancel).
-  - Schedule (next 14 days): **add** an appointment (phone/walk-in customer, car, services with editable prices, day and time), **move** it, **cancel** it, or **delete** it. Customers:  (spend, history, cars, CSV), Inquiries (from the chat assistant).
+  - Schedule (next 14 days): **add** an appointment (phone/walk-in customer, car, services with editable prices, day and time), **edit** any appointment (customer, car, services, prices, day, time, payment, notes), **move** it, **cancel** it or **delete** it. Every row in the calendar has Edit and Delete buttons.
+  - **Pending requests**: when a customer books online it arrives as a *pending request* (it holds its time slot) in Schedule -> Pending requests. Approve it (optionally changing the day/time first) or decline it. The customer sees "Awaiting confirmation" until you answer. Turn this off in Settings -> Pending requests to confirm customer bookings automatically.
+  - Customers (spend, history, cars, CSV, add an appointment for them), Inquiries (from the chat assistant), Services & prices, Settings.
   - Services & prices: show/hide a service, change the base price, old price and duration.
   - Settings: opening hours, bays, booking window, closed days, About-us text (AR/EN), camera links, workshop PIN, owner password, full JSON export, demo reset.
   - Beep + alert when a new order arrives while the page is open.

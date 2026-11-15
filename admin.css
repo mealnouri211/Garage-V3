@@ -1,0 +1,17 @@
+/* Owner back office page only (admin.html). The shared look lives in styles.css. */
+body[data-page="admin"] .adminlayer{position:static;inset:auto;overflow:visible;z-index:auto;min-height:100vh}
+body[data-page="admin"] .adminbar__brand{color:inherit;text-decoration:none}
+
+/* schedule: sub-tabs, row buttons, pending request cards */
+.sched__bar{justify-content:space-between;align-items:center;flex-wrap:wrap}
+.tabs2--sub{display:inline-flex;margin:0;width:auto}
+.tabs2--sub button{flex:0 0 auto;padding-inline:1.1rem}
+.sched__row{grid-template-columns:auto 1fr auto}
+.sched__act{grid-column:1 / -1;display:flex;gap:.5rem;justify-content:flex-end}
+.chipbtn{border:1px solid var(--line);border-radius:999px;padding:.15rem .8rem;font-size:.8rem;color:var(--text);background:transparent}
+.chipbtn:hover{border-color:var(--gold);color:var(--gold-text)}.chipbtn.danger{color:#ff6b6b;border-color:rgba(255,107,107,.45)}
+.reqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.req{display:grid;gap:.5rem;border-style:dashed;border-color:var(--gold)}
+.req header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}.req header .pill{margin-inline-start:auto}
+.req p{margin:0}
+@media (max-width:560px){.adminbar__brand b{display:none}}

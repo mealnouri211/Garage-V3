@@ -195,14 +195,8 @@
   function mountLayout() {
     $('#site-header').innerHTML = headerHtml();
     $('#site-footer').innerHTML = footerHtml();
-    $('#langBtn').addEventListener('click', () => {
-      HW.lang = HW.lang === 'ar' ? 'en' : 'ar'; store.set('hw_lang', HW.lang); HW.refresh();
-    });
-    $('#themeBtn').addEventListener('click', () => {
-      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-      document.documentElement.dataset.theme = next; store.set('hw_theme', next);
-      const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = next === 'light' ? '#faf8f3' : '#0a0a0b';
-    });
+    $('#langBtn').addEventListener('click', HW.toggleLang);
+    $('#themeBtn').addEventListener('click', HW.toggleTheme);
     $('#menuBtn').addEventListener('click', () => $('#nav').classList.toggle('open'));
     const cb = $('#carBtn');
     if (cb) cb.addEventListener('click', () => HW.openCarPicker({ onPick: (c) => { HW.setCar(c); HW.refresh(); }, onClear: () => { HW.setCar(null); HW.refresh(); } }));
@@ -213,6 +207,17 @@
   }
 
   /* Each page calls HW.boot(render). render() runs now and again whenever the language changes. */
+  HW.toggleLang = () => { HW.lang = HW.lang === 'ar' ? 'en' : 'ar'; store.set('hw_lang', HW.lang); HW.refresh(); };
+  HW.toggleTheme = () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next; store.set('hw_theme', next);
+    const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = next === 'light' ? '#faf8f3' : '#0a0a0b';
+  };
+  /* For pages without the site header and footer (the owner back office): same start-up, nothing drawn around the page. */
+  HW.bootBare = (render) => {
+    HW.refresh = () => { render(); applyI18n(); };
+    Promise.all([HW.api.ready, HW.api.me()]).then(([, u]) => { HW.user = u; HW.refresh(); });
+  };
   HW.boot = (render) => {
     HW.refresh = () => { mountLayout(); render(); applyI18n(); };
     // wait for the demo data and the signed-in account, then draw the page

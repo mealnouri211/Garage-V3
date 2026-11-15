@@ -106,7 +106,8 @@
 
   /* ---------- jobs ---------- */
   const ACTIVE = ['booked', 'received', 'in_progress', 'qc'];
-  const STAGES = ['booked', 'received', 'in_progress', 'qc', 'ready', 'delivered'];
+  const OPEN = ['pending', ...ACTIVE]; // a waiting request also holds its time slot until the owner answers
+  const STAGES = ['pending', 'booked', 'received', 'in_progress', 'qc', 'ready', 'delivered'];
   const allJobs = () => read(K.jobs, []);
   const mine = (j, u) => u && (j.userId === u.id || j.customer.phone === u.phone);
 
@@ -115,7 +116,7 @@
     const out = {};
     HW.sched.slotHours(dateStr).forEach((h) => {
       const at = new Date(`${dateStr}T${String(h).padStart(2, '0')}:00:00`).getTime();
-      out[h] = allJobs().filter((j) => ACTIVE.includes(j.status) && new Date(j.startFrom).getTime() <= at && at < new Date(j.etaAt).getTime()).length;
+      out[h] = allJobs().filter((j) => OPEN.includes(j.status) && new Date(j.startFrom).getTime() <= at && at < new Date(j.etaAt).getTime()).length;
     });
     return out;
   }
@@ -142,7 +143,7 @@
       car, items: d.items.map((it) => ({ pid: it.pid, qty: it.qty, sel: it.sel || {}, price: it.price })),
       total: d.items.reduce((s, it) => s + it.price, 0), durationMin: dur,
       appointment: appt ? { date: d.appointment.date, time: d.appointment.time } : null,
-      startFrom: start.toISOString(), status: walkIn && !appt ? 'received' : 'booked',
+      startFrom: start.toISOString(), status: walkIn ? (appt ? 'booked' : 'received') : (HW.CONFIG.requireApproval === false ? 'booked' : 'pending'),
       createdAt: nowIso(), receivedAt: walkIn && !appt ? nowIso() : null, startedAt: null,
       etaAt: HW.sched.addWork(start, dur).toISOString(), readyAt: null, deliveredAt: null,
       bay: null, camera: !!d.cameraConsent, cameraConsent: !!d.cameraConsent,
@@ -213,12 +214,52 @@
   /* Owner/staff: move a booked appointment to another day or time. */
   async function rescheduleJob(id, { date, time, durationMin }) {
     return mutate(id, (j) => {
-      if (j.status !== 'booked') throw fail('too_late');
+      if (j.status !== 'booked' && j.status !== 'pending') throw fail('too_late');
       const appt = new Date(`${date}T${time || '09:00'}:00`); if (isNaN(appt)) throw fail('bad_details');
       j.appointment = { date, time }; j.startFrom = appt.toISOString();
       if (durationMin > 0) j.durationMin = Math.round(durationMin);
       j.etaAt = HW.sched.addWork(appt, j.durationMin).toISOString();
       j.updates.push({ id: uid('n'), at: nowIso(), kind: 'eta' });
+    });
+  }
+  /* Owner/staff: answer a waiting request. Approving can also move it to another time. */
+  async function approveJob(id, { date, time } = {}) {
+    return mutate(id, (j) => {
+      if (j.status !== 'pending') throw fail('too_late');
+      if (date) {
+        const appt = new Date(`${date}T${time || '09:00'}:00`); if (isNaN(appt)) throw fail('bad_details');
+        j.appointment = { date, time }; j.startFrom = appt.toISOString(); j.etaAt = HW.sched.addWork(appt, j.durationMin).toISOString();
+      }
+      j.status = 'booked'; j.updates.push({ id: uid('n'), at: nowIso(), kind: 'status', status: 'booked' });
+    });
+  }
+  async function declineJob(id, reason) {
+    return mutate(id, (j) => {
+      if (j.status !== 'pending') throw fail('too_late');
+      j.status = 'cancelled'; j.camera = false; j.updates.push({ id: uid('n'), at: nowIso(), kind: 'status', status: 'cancelled' });
+      if (reason && String(reason).trim()) j.updates.push({ id: uid('n'), at: nowIso(), kind: 'note', text: String(reason).trim().slice(0, 300) });
+    });
+  }
+  /* Owner/staff: change anything about a booking that has not started or finished. Time and length only move while it is pending or booked. */
+  async function updateJob(id, d) {
+    return mutate(id, (j) => {
+      if (j.status === 'delivered' || j.status === 'cancelled') throw fail('too_late');
+      if (!d.items || !d.items.length) throw fail('empty');
+      if (!d.customer || !String(d.customer.name || '').trim() || normPhone(d.customer.phone).length < 8) throw fail('bad_details');
+      j.customer = { name: String(d.customer.name).trim(), phone: normPhone(d.customer.phone) };
+      if (d.car) j.car = d.car;
+      j.items = d.items.map((it) => ({ pid: it.pid, qty: it.qty || 1, sel: it.sel || {}, price: Number(it.price) || 0 }));
+      j.total = j.items.reduce((s, it) => s + it.price, 0);
+      j.notes = d.notes || ''; if (d.payment) j.payment = d.payment;
+      if (j.status === 'pending' || j.status === 'booked') {
+        j.durationMin = d.durationMin > 0 ? Math.round(d.durationMin) : HW.cartDuration(j.items, j.car);
+        if (d.appointment && d.appointment.date) {
+          const appt = new Date(`${d.appointment.date}T${d.appointment.time || '09:00'}:00`); if (isNaN(appt)) throw fail('bad_details');
+          if (!j.appointment || j.appointment.date !== d.appointment.date || j.appointment.time !== d.appointment.time) j.updates.push({ id: uid('n'), at: nowIso(), kind: 'eta' });
+          j.appointment = { date: d.appointment.date, time: d.appointment.time }; j.startFrom = appt.toISOString();
+        }
+        j.etaAt = HW.sched.addWork(new Date(j.startFrom), j.durationMin).toISOString();
+      }
     });
   }
   /* Owner only: remove a booking completely (cancel keeps it on record, this does not). */
@@ -257,7 +298,7 @@
     const u = await me();
     return mutate(id, (j) => {
       if (!staffOk() && !mine(j, u)) throw fail('not_allowed');
-      if (j.status !== 'booked' && !staffOk()) throw fail('too_late');
+      if (!['booked', 'pending'].includes(j.status) && !staffOk()) throw fail('too_late');
       j.status = 'cancelled'; j.camera = false; j.updates.push({ id: uid('n'), at: nowIso(), kind: 'status', status: 'cancelled' });
     }, { staffOnly: false });
   }
@@ -275,7 +316,8 @@
   function jobProgress(j, now = new Date()) {
     const st = j.status; let pct = 0, left = 0;
     if (st === 'cancelled') return { pct: 0, left: 0, eta: null, st };
-    if (st === 'booked') { pct = 5; left = j.durationMin; }
+    if (st === 'pending') { pct = 2; left = j.durationMin; }
+    else if (st === 'booked') { pct = 5; left = j.durationMin; }
     else if (st === 'received') { pct = 15; left = j.durationMin; }
     else if (st === 'in_progress') {
       const total = Math.max(1, HW.sched.workBetween(j.startedAt, j.etaAt)), done = HW.sched.workBetween(j.startedAt, now);
@@ -314,7 +356,7 @@
       const d = `${appt.getFullYear()}-${String(appt.getMonth() + 1).padStart(2, '0')}-${String(appt.getDate()).padStart(2, '0')}`;
       j.appointment = { date: d, time: `${String(appt.getHours()).padStart(2, '0')}:00` };
       j.startFrom = appt.toISOString();
-      if (o.status === 'booked') j.etaAt = HW.sched.addWork(appt, dur).toISOString();
+      if (o.status === 'booked' || o.status === 'pending') j.etaAt = HW.sched.addWork(appt, dur).toISOString();
       if (o.status === 'received') { j.receivedAt = new Date(anchor - 20 * MIN).toISOString(); j.etaAt = HW.sched.addWork(now, dur).toISOString(); }
       if (o.status === 'in_progress') {
         j.receivedAt = new Date(anchor - (o.doneMin + 30) * MIN).toISOString(); j.startedAt = subWork(anchor, o.doneMin).toISOString();
@@ -331,7 +373,7 @@
         j.paid = true; j.paidAt = j.deliveredAt; j.payment = o.pay || 'knet';
       }
       const t0 = new Date(j.createdAt).getTime();
-      j.updates.push({ id: uid('n'), at: new Date(t0).toISOString(), kind: 'status', status: 'booked' });
+      j.updates.push({ id: uid('n'), at: new Date(t0).toISOString(), kind: 'status', status: o.status === 'pending' ? 'pending' : 'booked' });
       if (j.receivedAt) j.updates.push({ id: uid('n'), at: j.receivedAt, kind: 'status', status: 'received' });
       if (j.startedAt) j.updates.push({ id: uid('n'), at: j.startedAt, kind: 'status', status: 'in_progress' });
       (o.extra || []).forEach((e) => j.updates.push({ id: uid('n'), at: new Date(now - e.ago * MIN).toISOString(), ...e.u }));
@@ -346,6 +388,7 @@
         extra: [{ ago: 45, u: { kind: 'photo', text: 'Washing and decontamination done. Starting the polish.', photo: 'assets/categories/wash.jpg' } }],
         approvals: [{ title: 'Headlight restoration (both sides)', price: 18, extraMin: 45 }] }),
       mkJob({ user: 'u-demo', customer: { name: 'Demo Customer', phone: '96599990001' }, car: car('toyota', 'Land Cruiser', 2023), ids: ['ppf-front', 'glass-global'], status: 'booked', apptOffsetDays: 1, apptHour: 10 }),
+      mkJob({ customer: { name: 'Abdullah', phone: '96599990010' }, car: car('toyota', 'Corolla', 2020), ids: ['wash-detail'], status: 'pending', apptOffsetDays: 2, apptHour: 11 }),
       mkJob({ customer: { name: 'Fahad', phone: '96599990002' }, car: car('bmw', 'M3', 2021), ids: ['thermal-a'], status: 'qc', bay: 1, camera: true }),
       mkJob({ customer: { name: 'Mariam', phone: '96599990003' }, car: car('mercedes', 'G-Class', 2022), ids: ['ppf-half', 'wheels-protect'], status: 'in_progress', doneMin: 90, bay: 3, camera: true,
         extra: [{ ago: 20, u: { kind: 'note', text: 'Film is being cut and fitted to the bumper.' } }] }),
@@ -372,12 +415,12 @@
 
   const SEED_READY = HW.CONFIG.demoMode ? Promise.resolve().then(() => seedDemo()) : Promise.resolve();
 
-  HW.STAGES = STAGES; HW.ACTIVE = ACTIVE;
+  HW.STAGES = STAGES; HW.ACTIVE = ACTIVE; HW.OPEN = OPEN;
   HW.jobProgress = jobProgress;
   HW.api = {
     ready: SEED_READY, normPhone, onChange: (f) => { listeners.add(f); return () => listeners.delete(f); },
     register, login, logout, me, saveCar, removeCar,
-    staffOk, staffLogin, staffLogout, ownerOk, ownerLogin, ownerLogout, ownerInfo, changeOwner, listUsers, setPaid, setInternalNote, rescheduleJob, deleteJob,
+    staffOk, staffLogin, staffLogout, ownerOk, ownerLogin, ownerLogout, ownerInfo, changeOwner, listUsers, setPaid, setInternalNote, rescheduleJob, deleteJob, approveJob, declineJob, updateJob,
     slots, createJob, listJobs, getJob, setStatus, adjustEta, assignBay, setCamera, setCameraConsent, addUpdate, requestApproval, decideApproval, cancelJob,
     addLead, listLeads, setLeadStatus, seedDemo, resetDemo, wipeAll, remainingMin
   };
