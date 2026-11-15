@@ -496,7 +496,7 @@
   async function render() {
     if (!HW.api.ownerOk()) { location.replace('login.html'); return; }
     if (!layer) setup();
-    if (!ready) { try { await load(); } catch { location.replace('login.html'); return; } ready = true; S.seen = new Set(S.jobs.map((j) => j.id)); }
+    if (!ready) { try { await load(); } catch (ex) { if (!HW.api.ownerOk()) { location.replace('login.html'); return; } throw ex; } ready = true; S.seen = new Set(S.jobs.map((j) => j.id)); }
     paint();
   }
   const isOpen = () => ready;
