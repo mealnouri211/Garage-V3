@@ -260,14 +260,11 @@
     const C = HW.CONFIG, W = C.workHours;
     return `
       ${S.owner && S.owner.isDefault ? `<div class="banner banner--warn"><b>${HW.t('a_default_pw')}</b> ${HW.t('a_default_pw_p')}</div>` : ''}
-      <div class="grid2">
+      <div class="settings-cols">
       <section class="panel"><h3>${HW.t('a_hours')}</h3>
         <div class="mults"><div class="field"><label>${HW.t('a_open')}</label><input type="number" id="sStart" min="0" max="23" value="${W.start}" dir="ltr"></div><div class="field"><label>${HW.t('a_close')}</label><input type="number" id="sEnd" min="1" max="24" value="${W.end}" dir="ltr"></div><div class="field"><label>${HW.t('friday')} ${HW.t('a_open')}</label><input type="number" id="sFri" min="0" max="23" value="${W.fridayStart}" dir="ltr"></div>
         <div class="field"><label>${HW.t('bays')}</label><input type="number" id="sBays" min="1" max="20" value="${C.bays}" dir="ltr"></div><div class="field"><label>${HW.t('a_days_ahead')}</label><input type="number" id="sDays" min="1" max="120" value="${C.bookingDays}" dir="ltr"></div></div>
         <button class="btn btn--gold" data-act="save-hours">${HW.t('save')}</button></section>
-      <section class="panel"><h3>${HW.t('a_requests')}</h3><p class="muted small">${HW.t('a_need_approval_p')}</p>
-        <label class="switch"><input type="checkbox" id="sApprove" ${C.requireApproval === false ? '' : 'checked'}><span></span><em>${HW.t('a_need_approval')}</em></label>
-        <button class="btn btn--gold" data-act="save-approval">${HW.t('save')}</button></section>
       <section class="panel"><h3>${HW.t('a_closed_days')}</h3><p class="muted small">${HW.t('a_closed_p')}</p>
         <div class="sgroup"><input type="date" id="sClosed"><button class="btn btn--ghost" data-act="add-closed">${HW.t('a_add')}</button></div>
         <div class="chips">${(C.closedDates || []).slice().sort().map((d) => `<button class="chip" data-rm-closed="${d}" dir="ltr" title="${HW.t('remove')}">${d} ×</button>`).join('') || `<span class="muted small">–</span>`}</div></section>
@@ -446,7 +443,6 @@
         if (!date || !time) { HW.toast(HW.t('err_booking')); break; }
         await act(() => HW.api.approveJob(jid, { date, time }), 'a_approve_ok'); break;
       }
-      case 'save-approval': HW.saveSettings({ requireApproval: !!sel('#sApprove').checked }); HW.toast(HW.t('saved')); break;
       case 'resched': { const date = HW.$('#dDate').value, time = HW.$('#dTime').value; if (!date || !time) { HW.toast(HW.t('err_booking')); break; } await act(() => HW.api.rescheduleJob(id, { date, time }), 'a_moved'); break; }
       case 'delete-order': if (confirm(HW.t('a_delete_confirm'))) { S.open = null; await act(() => HW.api.deleteJob(id), 'saved'); } break;
       case 'csv-orders': csv('heroworks-orders.csv', JOB_HEAD, filtered().map(jobRow)); break;

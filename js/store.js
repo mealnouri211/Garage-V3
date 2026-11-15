@@ -143,7 +143,7 @@
       car, items: d.items.map((it) => ({ pid: it.pid, qty: it.qty, sel: it.sel || {}, price: it.price })),
       total: d.items.reduce((s, it) => s + it.price, 0), durationMin: dur,
       appointment: appt ? { date: d.appointment.date, time: d.appointment.time } : null,
-      startFrom: start.toISOString(), status: walkIn ? (appt ? 'booked' : 'received') : (HW.CONFIG.requireApproval === false ? 'booked' : 'pending'),
+      startFrom: start.toISOString(), status: walkIn ? (appt ? 'booked' : 'received') : 'pending',
       createdAt: nowIso(), receivedAt: walkIn && !appt ? nowIso() : null, startedAt: null,
       etaAt: HW.sched.addWork(start, dur).toISOString(), readyAt: null, deliveredAt: null,
       bay: null, camera: !!d.cameraConsent, cameraConsent: !!d.cameraConsent,
@@ -388,7 +388,6 @@
         extra: [{ ago: 45, u: { kind: 'photo', text: 'Washing and decontamination done. Starting the polish.', photo: 'assets/categories/wash.jpg' } }],
         approvals: [{ title: 'Headlight restoration (both sides)', price: 18, extraMin: 45 }] }),
       mkJob({ user: 'u-demo', customer: { name: 'Demo Customer', phone: '96599990001' }, car: car('toyota', 'Land Cruiser', 2023), ids: ['ppf-front', 'glass-global'], status: 'booked', apptOffsetDays: 1, apptHour: 10 }),
-      mkJob({ customer: { name: 'Abdullah', phone: '96599990010' }, car: car('toyota', 'Corolla', 2020), ids: ['wash-detail'], status: 'pending', apptOffsetDays: 2, apptHour: 11 }),
       mkJob({ customer: { name: 'Fahad', phone: '96599990002' }, car: car('bmw', 'M3', 2021), ids: ['thermal-a'], status: 'qc', bay: 1, camera: true }),
       mkJob({ customer: { name: 'Mariam', phone: '96599990003' }, car: car('mercedes', 'G-Class', 2022), ids: ['ppf-half', 'wheels-protect'], status: 'in_progress', doneMin: 90, bay: 3, camera: true,
         extra: [{ ago: 20, u: { kind: 'note', text: 'Film is being cut and fitted to the bumper.' } }] }),
@@ -407,13 +406,42 @@
     write(K.jobs, jobs);
     const leads = [{ id: nextId('L', 0), createdAt: new Date(now - 30 * MIN).toISOString(), status: 'new', name: 'Abdullah', phone: '96599990006', carText: 'Hyundai Sonata 2019', car: car('hyundai', 'Sonata', 2019), services: ['Wheel Protection – Weighter'], when: 'This week', notes: 'Wants it done before the weekend.', lang: 'en' }];
     write(K.leads, leads);
-    localStorage.setItem(K.seeded, '1'); emit();
+    addMockRequests(); localStorage.setItem(K.seeded, '1'); emit();
     return true;
+  }
+  /* Demo only: six customer requests waiting for the owner's approval, spread over the coming days. Added once per browser (flag hw3_mockreq). */
+  function addMockRequests() {
+    localStorage.setItem('hw3_mockreq', '1');
+    const car = (mk, md, y) => HW.makeCar(mk, md, y);
+    const svc = (ids, c) => ids.map((pid) => { const p = HW.findProduct(pid); return { pid, qty: 1, sel: {}, price: HW.priceFor(p, c) }; });
+    const rows = [
+      ['Khaled', '96550010001', car('toyota', 'Corolla', 2020), ['wash-detail'], 'knet', 'أفضّل الفترة الصباحية'],
+      ['Sara', '96550010002', car('lexus', 'RX', 2022), ['polish-hero', 'wash-nano'], 'apple', ''],
+      ['Yaqoub', '96550010003', car('nissan', 'Patrol', 2021), ['ppf-front'], 'deema', 'Please call before the appointment'],
+      ['Dana', '96550010004', car('kia', 'Sportage', 2021), ['oil-jp', 'mech-check'], 'cash', ''],
+      ['Meshal', '96550010005', car('bmw', 'M3', 2021), ['thermal-a'], 'taly', 'Need it done in one day'],
+      ['Hanan', '96550010006', car('mazda', 'CX-5', 2020), ['glass-global', 'wheels-protect'], 'knet', '']
+    ];
+    const jobs = allJobs(), now = Date.now(); let day = 1, n = 0;
+    rows.forEach((r, i) => {
+      let hrs = [];
+      while (!hrs.length && day < 40) { const d = new Date(now + day * 86400000); r.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; hrs = HW.sched.slotHours(r.date); if (!hrs.length) day++; }
+      const h = hrs[(i * 2) % hrs.length], appt = new Date(`${r.date}T${String(h).padStart(2, '0')}:00:00`);
+      const items = svc(r[3], r[2]), dur = HW.cartDuration(items, r[2]), created = new Date(now - (i + 1) * 41 * 60000).toISOString();
+      jobs.unshift({
+        id: nextId('J', 1000), userId: null, customer: { name: r[0], phone: r[1] }, car: r[2], items, total: items.reduce((s, it) => s + it.price, 0), durationMin: dur,
+        appointment: { date: r.date, time: `${String(h).padStart(2, '0')}:00` }, startFrom: appt.toISOString(), status: 'pending', createdAt: created, receivedAt: null, startedAt: null,
+        etaAt: HW.sched.addWork(appt, dur).toISOString(), readyAt: null, deliveredAt: null, bay: null, camera: false, cameraConsent: false,
+        notes: r[5], payment: r[4], paid: false, paidAt: null, internalNote: '', lang: 'ar', updates: [{ id: uid('n'), at: created, kind: 'status', status: 'pending' }], approvals: []
+      });
+      n++; if (i % 2) day++;
+    });
+    write(K.jobs, jobs); return n;
   }
   async function resetDemo() { needOwner(); localStorage.removeItem(K.seeded); localStorage.removeItem('hw3_mult'); localStorage.removeItem('hw3_prices'); await seedDemo(true); return true; }
   async function wipeAll() { needOwner(); ['users', 'session', 'jobs', 'leads', 'seq'].forEach((k) => localStorage.removeItem(K[k])); localStorage.setItem(K.seeded, '1'); emit(); }
 
-  const SEED_READY = HW.CONFIG.demoMode ? Promise.resolve().then(() => seedDemo()) : Promise.resolve();
+  const SEED_READY = HW.CONFIG.demoMode ? Promise.resolve().then(() => seedDemo()).then(() => { if (!localStorage.getItem('hw3_mockreq') && localStorage.getItem(K.seeded)) { addMockRequests(); emit(); } }) : Promise.resolve();
 
   HW.STAGES = STAGES; HW.ACTIVE = ACTIVE; HW.OPEN = OPEN;
   HW.jobProgress = jobProgress;
