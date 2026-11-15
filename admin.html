@@ -13,20 +13,12 @@
   <script>(function(){try{var t=JSON.parse(localStorage.getItem('hw_theme'))||'dark';t=t==='light'?'light':'dark';document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='light'?'#faf8f3':'#0a0a0b'}catch(e){document.documentElement.dataset.theme='dark'}})();</script>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/logo-192.png">
-  <link rel="stylesheet" href="styles.css?v=20261115a">
-  <link rel="stylesheet" href="admin.css?v=20261115c">
+  <script>/* admin always loads fresh copies of its files, so a cached old file can never be mixed with the new page */
+    window.__v = Date.now(); ['styles.css', 'admin.css'].forEach(function (f) { document.write('<link rel="stylesheet" href="' + f + '?v=' + window.__v + '">'); });</script>
 </head>
 <body data-page="admin" data-title="a_title">
   <div id="adminLayer" class="adminlayer"><header class="adminbar" id="adminBar"></header><main class="container container--wide adminroot" id="adminRoot"></main><div id="printSheet" class="print-sheet"></div></div>
   <script>window.addEventListener('unhandledrejection',function(e){window.dispatchEvent(new ErrorEvent('error',{message:String(e.reason&&e.reason.message||e.reason)}))});setTimeout(function(){var r=document.getElementById('adminRoot');if(r&&!r.children.length&&!document.getElementById('adminErr')){document.body.insertAdjacentHTML('beforeend','<pre id="adminErr" style="position:fixed;inset:auto 0 0 0;margin:0;padding:1rem;background:#300;color:#fff;font:14px/1.6 sans-serif;white-space:pre-wrap;z-index:999">The admin page did not start. Replace js/admin.js, js/common.js, js/store.js, js/i18n-v2.js, admin.html and admin.css with the newest versions, then reload.</pre>')}},4000);window.addEventListener('error',function(e){var d=document.getElementById('adminErr')||document.body.appendChild(Object.assign(document.createElement('pre'),{id:'adminErr'}));d.style.cssText='position:fixed;inset:auto 0 0 0;margin:0;padding:1rem;background:#300;color:#fff;font:13px/1.5 monospace;white-space:pre-wrap;z-index:999';d.textContent+=(e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+e.lineno+')\n'})</script>
-  <script src="js/data.js?v=20261115a"></script>
-  <script src="js/config.js?v=20261115c"></script>
-  <script src="js/vehicles.js?v=20261115a"></script>
-  <script src="js/pricing.js?v=20261115a"></script>
-  <script src="js/store.js?v=20261115c"></script>
-  <script src="js/i18n-v2.js?v=20261115c"></script>
-  <script src="js/common.js?v=20261115a"></script>
-  <script src="js/carpicker.js?v=20261115a"></script>
-  <script src="js/admin.js?v=20261115c"></script>
+  <script>['js/data.js', 'js/config.js', 'js/vehicles.js', 'js/pricing.js', 'js/store.js', 'js/i18n-v2.js', 'js/common.js', 'js/carpicker.js', 'js/admin.js'].forEach(function (f) { document.write('<script src="' + f + '?v=' + window.__v + '"><\/script>'); });</script>
 </body>
 </html>

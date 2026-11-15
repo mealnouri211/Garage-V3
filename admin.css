@@ -35,3 +35,5 @@ body[data-page="admin"] .adminbar__brand{color:inherit;text-decoration:none}
 .settings-cols .mults{align-items:end}.settings-cols .mults .field{margin:0}
 .settings-cols .mults input{min-height:46px}
 .settings-cols .sgroup{align-items:stretch;flex-wrap:nowrap}.settings-cols .sgroup input{flex:1}
+
+.build{font-size:.7rem;color:var(--muted);font-family:'Inter',sans-serif;white-space:nowrap}
