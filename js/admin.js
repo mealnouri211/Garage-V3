@@ -1,8 +1,11 @@
-/* Owner back office: overview, orders, schedule, customers, requests, services/prices, settings.
+/* Owner back office: overview, bookings, schedule (add / move / cancel / delete), customers, inquiries, services & prices, settings.
+   It is not a separate page: common.js loads this file on demand (secret gesture) and it opens as a full-screen layer on top of the site.
    Signs in with the owner username + password (see store.js). DEMO-LEVEL SECURITY: data lives in this browser. */
 (() => {
   const HW = window.HW;
   const S = { tab: 'overview', range: '30', jobs: [], leads: [], users: [], owner: null, q: '', fStatus: '', fPaid: '', from: '', to: '', open: null, cust: null, svcQ: '', seen: null, quiet: false, err: '' };
+  let layer = null, wrapped = false;
+  const isOpen = () => !!layer && !layer.hidden;
   const ALL_STATUS = [...HW.STAGES, 'cancelled'];
   const PAY = ['knet', 'apple', 'deema', 'taly', 'cash'];
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,8 +40,7 @@
       <div class="field"><label for="oUser">${HW.t('a_user')}</label><input id="oUser" autocomplete="username" dir="ltr" autocapitalize="none"></div>
       <div class="field"><label for="oPass">${HW.t('f_password')}</label><input id="oPass" type="password" autocomplete="current-password" dir="ltr"></div>
       <div class="err" id="oErr" role="alert"></div><button class="btn btn--gold btn--block">${HW.t('sign_in')}</button>
-      ${HW.CONFIG.demoMode ? `<div class="demo-box"><b>${HW.t('demo_account')}</b><br><span dir="ltr">owner · owner1234</span></div>` : ''}
-      <p class="muted small center"><a href="staff.html">${HW.t('a_staff_board')}</a></p></form>`;
+      ${HW.CONFIG.demoMode ? `<div class="demo-box"><b>${HW.t('demo_account')}</b><br><span dir="ltr">owner · owner1234</span></div>` : ''}</form>`;
     HW.$('#ownerForm').onsubmit = async (e) => {
       e.preventDefault();
       try { await HW.api.ownerLogin({ user: HW.$('#oUser').value, password: HW.$('#oPass').value }); await load(); S.seen = new Set(S.jobs.map((j) => j.id)); paint(); } catch (ex) { HW.$('#oErr').textContent = HW.t('err_' + (ex.code || 'generic')); }
@@ -146,6 +148,7 @@
           <div class="grand sum"><span>${HW.t('total')}</span><span>${HW.money(j.total)}</span></div></section>
         <section><h4>${HW.t('appointment')}</h4>
           <dl class="facts"><div><dt>${HW.t('appointment')}</dt><dd>${when(j.startFrom)}</dd></div><div><dt>${HW.t('ready_by')}</dt><dd>${pr.eta ? when(pr.eta) : '–'}</dd></div><div><dt>${HW.t('bay')}</dt><dd>${j.bay || '–'}</dd></div><div><dt>${HW.t('progress')}</dt><dd>${pr.pct}%</dd></div></dl>
+          ${j.status === 'booked' ? `<div class="sgroup"><input type="date" id="dDate" min="${dayKey(new Date())}" max="${maxDate()}" value="${j.appointment ? j.appointment.date : dayKey(j.startFrom)}"><select id="dTime" data-cur="${j.appointment ? j.appointment.time : pad2(new Date(j.startFrom).getHours()) + ':00'}"></select><button class="btn btn--gold" data-act="resched">${HW.t('a_move')}</button></div>` : ''}
           <div class="sgroup"><select id="dStatus">${ALL_STATUS.map((s) => `<option value="${s}" ${j.status === s ? 'selected' : ''}>${HW.t('st_' + s)}</option>`).join('')}</select><button class="btn btn--gold" data-act="set-status">${HW.t('a_apply')}</button></div></section>
         <section><h4>${HW.t('payment')}</h4>
           <div class="sgroup"><select id="dPay">${PAY.map((m) => `<option value="${m}" ${j.payment === m ? 'selected' : ''}>${payName(m)}</option>`).join('')}</select>
@@ -154,7 +157,7 @@
           ${['deema', 'taly'].includes(j.payment) && !j.paid ? `<a class="linklike" target="_blank" rel="noopener" href="https://wa.me/${j.customer.phone}?text=${encodeURIComponent((j.lang === 'en' ? 'Your payment link for order ' : 'رابط الدفع لطلبك ') + j.id + ': ')}">${HW.t('a_send_link')}</a>` : ''}</section>
         <section><h4>${HW.t('a_internal')}</h4><textarea id="dNote" rows="3" placeholder="${HW.t('a_internal_ph')}">${esc(j.internalNote || '')}</textarea><button class="btn btn--ghost" data-act="save-note">${HW.t('save')}</button></section>
         <section><h4>${HW.t('updates')}</h4><ul class="feed feed--sm">${[...j.updates].reverse().map((u) => `<li><time>${HW.fmtWhen(u.at)}</time><div>${u.kind === 'status' ? `${HW.t('feed_status')}: <b>${HW.t('st_' + u.status)}</b>` : esc(u.text || HW.t('feed_eta'))}</div></li>`).join('')}</ul></section>
-        <div class="btn-row"><button class="btn btn--ghost" data-act="print">${HW.t('a_print')}</button><a class="btn btn--ghost" target="_blank" href="job.html?id=${j.id}">${HW.t('customer_view')}</a><a class="btn btn--ghost" href="staff.html">${HW.t('a_staff_board')}</a>${j.status !== 'cancelled' && j.status !== 'delivered' ? `<button class="btn btn--ghost danger" data-act="cancel-order">${HW.t('cancel_booking')}</button>` : ''}</div>
+        <div class="btn-row"><button class="btn btn--ghost" data-act="print">${HW.t('a_print')}</button><a class="btn btn--ghost" target="_blank" href="job.html?id=${j.id}">${HW.t('customer_view')}</a><a class="btn btn--ghost" href="staff.html">${HW.t('a_staff_board')}</a>${j.status !== 'cancelled' && j.status !== 'delivered' ? `<button class="btn btn--ghost danger" data-act="cancel-order">${HW.t('cancel_booking')}</button>` : ''}<button class="btn btn--ghost danger" data-act="delete-order">${HW.t('a_delete')}</button></div>
       </div>
     </aside>`;
   }
@@ -172,9 +175,9 @@
   /* ---------- schedule ---------- */
   function scheduleHtml() {
     const days = Array.from({ length: 14 }, (_, i) => startOfDay(new Date(Date.now() + i * 86400000)));
-    return `<div class="sched">${days.map((d) => {
+    return `<div class="toolbar"><button class="btn btn--gold" data-act="add-appt">+ ${HW.t('a_add_appt')}</button></div><div class="sched">${days.map((d) => {
       const closed = HW.sched.isClosedDay(d), list = S.jobs.filter((j) => live(j) && dayKey(j.startFrom) === dayKey(d) && j.status !== 'delivered').sort((a, b) => new Date(a.startFrom) - new Date(b.startFrom));
-      return `<section class="panel sched__day ${closed ? 'is-closed' : ''}"><h4>${HW.fmtDay(d)} ${closed ? `<span class="pill pill--warn">${HW.t('a_closed')}</span>` : `<span class="count">${list.length}</span>`}</h4>
+      return `<section class="panel sched__day ${closed ? 'is-closed' : ''}"><h4><span>${HW.fmtDay(d)}</span> ${closed ? `<span class="pill pill--warn">${HW.t('a_closed')}</span>` : `<span class="sched__tools"><span class="sched__n">${list.length}</span><button class="mini" data-act="add-appt" data-date="${dayKey(d)}" aria-label="${HW.t('a_add_appt')}" title="${HW.t('a_add_appt')}">+</button></span>`}</h4>
         ${list.map((j) => `<div class="sched__row" data-open="${j.id}"><b>${HW.fmtTime(j.startFrom)}</b><span>${carTxt(j.car)}<small class="muted"> · ${esc(j.customer.name)} · ${esc(j.items.map(pname).join(' · '))}</small></span>${stChip(j.status)}</div>`).join('') || (closed ? '' : `<p class="muted small">${HW.t('a_free_day')}</p>`)}</section>`;
     }).join('')}</div>`;
   }
@@ -194,7 +197,7 @@
       <p class="muted small">${list.length} ${HW.t('a_customers')}</p>
       <div class="tablewrap tablewrap--tall"><table class="otable"><thead><tr><th>${HW.t('f_name')}</th><th>${HW.t('f_phone')}</th><th>${HW.t('a_orders')}</th><th>${HW.t('a_spent')}</th><th>${HW.t('a_last')}</th><th>${HW.t('my_cars')}</th></tr></thead><tbody>
       ${list.map((c) => `<tr data-cust="${c.phone}" tabindex="0"><td><b>${esc(c.name)}</b>${c.registered ? ` <span class="tag">${HW.t('a_account')}</span>` : ''}</td><td dir="ltr">+${c.phone}</td><td class="num">${c.jobs.length}</td><td class="num">${HW.money(c.spent)}</td><td>${c.last ? HW.fmtDay(c.last) : '–'}</td><td>${[...c.cars.values()].map((x) => esc(HW.carName(x, HW.lang))).join('، ')}</td></tr>
-        ${S.cust === c.phone ? `<tr class="subrow"><td colspan="6"><div class="btn-row"><a class="btn btn--ghost" target="_blank" rel="noopener" href="https://wa.me/${c.phone}">WhatsApp</a><a class="btn btn--ghost" href="tel:+${c.phone}">${HW.t('call_us')}</a></div>${c.jobs.length ? `<ul class="att">${[...c.jobs].reverse().map((j) => `<li data-open="${j.id}"><b dir="ltr">${j.id}</b> ${HW.fmtDay(j.createdAt)} · ${carTxt(j.car)} · ${esc(j.items.map(pname).join(' · '))}${stChip(j.status)}<span class="num">${HW.money(j.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${HW.t('a_no_orders')}</p>`}</td></tr>` : ''}`).join('')}
+        ${S.cust === c.phone ? `<tr class="subrow"><td colspan="6"><div class="btn-row"><a class="btn btn--ghost" target="_blank" rel="noopener" href="https://wa.me/${c.phone}">WhatsApp</a><a class="btn btn--ghost" href="tel:+${c.phone}">${HW.t('call_us')}</a><button class="btn btn--gold" data-act="add-appt" data-name="${esc(c.name)}" data-phone="${c.phone}">+ ${HW.t('a_add_appt')}</button></div>${c.jobs.length ? `<ul class="att">${[...c.jobs].reverse().map((j) => `<li data-open="${j.id}"><b dir="ltr">${j.id}</b> ${HW.fmtDay(j.createdAt)} · ${carTxt(j.car)} · ${esc(j.items.map(pname).join(' · '))}${stChip(j.status)}<span class="num">${HW.money(j.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${HW.t('a_no_orders')}</p>`}</td></tr>` : ''}`).join('')}
       </tbody></table></div>`;
   }
 
@@ -271,23 +274,109 @@
       </div>`;
   }
 
+  /* ---------- appointment: add (dialog) and move (drawer) ---------- */
+  const pad2 = (n) => String(n).padStart(2, '0');
+  async function fillSlots(sel, date, current) {
+    if (!sel) return;
+    if (!date) { sel.innerHTML = `<option value="">${HW.t('pick_date_first')}</option>`; sel.disabled = true; return; }
+    const hrs = HW.sched.slotHours(date);
+    if (!hrs.length) { sel.innerHTML = `<option value="">${HW.t('closed_day')}</option>`; sel.disabled = true; return; }
+    const r = await HW.api.slots(date), now = new Date(), today = dayKey(now) === date;
+    sel.disabled = false;
+    sel.innerHTML = hrs.map((h) => {
+      const label = `${pad2(h)}:00`, used = r.usage[h] || 0, past = today && h <= now.getHours();
+      return `<option value="${label}" ${past ? 'disabled' : ''} ${label === current ? 'selected' : ''}>${label} · ${used}/${r.bays}${used >= r.bays ? ' (' + HW.t('slot_full') + ')' : ''}</option>`;
+    }).join('');
+  }
+  const maxDate = () => dayKey(new Date(Date.now() + HW.CONFIG.bookingDays * 86400000));
+
+  function apptDialog(pre = {}) {
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div class="modal__panel modal__panel--wide"><button type="button" class="modal__x" aria-label="${HW.t('close')}">×</button><h3>${HW.t('a_add_appt')}</h3><div id="apBody"></div></div>`;
+    document.body.appendChild(m); document.body.classList.add('modal-open');
+    const close = () => { m.remove(); document.body.classList.remove('modal-open'); };
+    m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('.modal__x')) close(); });
+    const body = m.querySelector('#apBody');
+    const A = { car: null, name: '', phone: '', date: '', time: '', pay: 'cash', notes: '', dur: '', ids: {}, ...pre };
+    const grab = () => {
+      if (!body.querySelector('#apName')) return;
+      A.name = body.querySelector('#apName').value; A.phone = body.querySelector('#apPhone').value; A.date = body.querySelector('#apDate').value;
+      A.time = body.querySelector('#apTime').value; A.pay = body.querySelector('#apPay').value; A.notes = body.querySelector('#apNotes').value; A.dur = body.querySelector('#apDur').value;
+      A.ids = {}; body.querySelectorAll('.aprow').forEach((r) => { if (r.querySelector('input[type=checkbox]').checked) A.ids[r.dataset.id] = r.querySelector('.ap-price').value; });
+    };
+    const total = () => {
+      let t = 0; body.querySelectorAll('.aprow').forEach((r) => { if (r.querySelector('input[type=checkbox]').checked) t += Number(r.querySelector('.ap-price').value) || 0; });
+      body.querySelector('#apTotal').textContent = HW.money(t);
+    };
+    const pickCar = () => { grab(); HW.mountCarPicker(body, { onPick: (car) => { A.car = car; A.ids = {}; form(); } }); };
+    const form = () => {
+      const svc = HW.PRODUCTS.filter((p) => HW.fit(p, A.car) !== 'no');
+      body.innerHTML = `
+        <p class="ap__car"><b>${carTxt(A.car)}</b> <button type="button" class="linklike" id="apCar">${HW.t('change')}</button></p>
+        <div class="grid2f"><div class="field"><label for="apName">${HW.t('f_name')}</label><input id="apName" value="${esc(A.name)}" autocomplete="off"></div>
+          <div class="field"><label for="apPhone">${HW.t('f_phone')}</label><input id="apPhone" type="tel" dir="ltr" inputmode="tel" value="${esc(A.phone)}" autocomplete="off"></div></div>
+        <div class="field"><label for="apQ">${HW.t('a_svc_pick')}</label><input id="apQ" type="search" placeholder="${HW.t('a_search_svc')}">
+          <div class="aplist" id="apList">${svc.map((p) => `<label class="aprow" data-id="${p.id}" data-q="${esc((p.name.ar + ' ' + p.name.en).toLowerCase())}"><input type="checkbox" ${p.id in A.ids ? 'checked' : ''}>
+            <span class="aprow__n"><b>${esc(HW.L(p.name))}</b><small class="muted">${esc(HW.L(HW.findCat(p.cat).name))}</small></span>
+            <input type="number" class="ap-price" step="0.5" min="0" dir="ltr" value="${p.id in A.ids ? esc(A.ids[p.id]) : HW.priceFor(p, A.car)}" aria-label="${HW.t('a_price_s')}"></label>`).join('')}</div></div>
+        <div class="grid2f"><div class="field"><label for="apDate">${HW.t('choose_date')}</label><input id="apDate" type="date" min="${dayKey(new Date())}" max="${maxDate()}" value="${A.date}"></div>
+          <div class="field"><label for="apTime">${HW.t('choose_time')}</label><select id="apTime"></select></div></div>
+        <p class="muted small">${HW.t('a_overbook')}</p>
+        <div class="grid2f"><div class="field"><label for="apPay">${HW.t('payment')}</label><select id="apPay">${PAY.map((k) => `<option value="${k}" ${A.pay === k ? 'selected' : ''}>${payName(k)}</option>`).join('')}</select></div>
+          <div class="field"><label for="apDur">${HW.t('a_duration')}</label><input id="apDur" type="number" min="15" step="15" dir="ltr" value="${esc(A.dur)}"></div></div>
+        <div class="field"><label for="apNotes">${HW.t('f_notes')}</label><textarea id="apNotes" rows="2">${esc(A.notes)}</textarea></div>
+        <div class="grand sum"><span>${HW.t('total')}</span><span id="apTotal"></span></div>
+        <div class="err" id="apErr" role="alert"></div><button type="button" class="btn btn--gold btn--block" id="apGo">${HW.t('a_add_appt')}</button>`;
+      total(); fillSlots(body.querySelector('#apTime'), A.date, A.time);
+      body.querySelector('#apCar').onclick = pickCar;
+      body.querySelector('#apQ').oninput = (e) => { const q = e.target.value.trim().toLowerCase(); body.querySelectorAll('.aprow').forEach((r) => { r.hidden = !!q && !r.dataset.q.includes(q); }); };
+      body.querySelector('#apList').oninput = total;
+      body.querySelector('#apDate').onchange = (e) => fillSlots(body.querySelector('#apTime'), e.target.value, '');
+      body.querySelector('#apGo').onclick = async () => {
+        grab(); const err = body.querySelector('#apErr'); err.textContent = '';
+        const ids = Object.keys(A.ids);
+        if (!A.name.trim() || A.phone.replace(/\D/g, '').length < 8) { err.textContent = HW.t('err_bad_details'); return; }
+        if (!ids.length) { err.textContent = HW.t('a_pick_service'); return; }
+        if (!A.date || !A.time) { err.textContent = HW.t('err_booking'); return; }
+        const items = ids.map((id) => ({ pid: id, qty: 1, sel: {}, price: Number(A.ids[id]) || 0 }));
+        try {
+          await HW.api.createJob({ customer: { name: A.name.trim(), phone: A.phone }, car: A.car, items, appointment: { date: A.date, time: A.time }, notes: A.notes, payment: A.pay, durationMin: Number(A.dur) || 0, lang: HW.lang }, { walkIn: true });
+          close(); S.seen = null; await load(); S.seen = new Set(S.jobs.map((j) => j.id)); S.tab = 'schedule'; paint(); HW.toast(HW.t('a_appt_added'));
+        } catch (ex) { err.textContent = HW.t('err_' + (ex.code || 'generic')); }
+      };
+    };
+    A.car ? form() : pickCar();
+  }
+
   /* ---------- paint + events ---------- */
+  const TITLES = { overview: 'a_t_overview', orders: 'a_t_orders', schedule: 'a_t_schedule', customers: 'a_t_customers', leads: 'tab_leads', services: 'a_t_services', settings: 'a_t_settings' };
   const TABS = [['overview', 'a_t_overview'], ['orders', 'a_t_orders'], ['schedule', 'a_t_schedule'], ['customers', 'a_t_customers'], ['leads', 'tab_leads'], ['services', 'a_t_services'], ['settings', 'a_t_settings']];
 
+  function paintBar() {
+    HW.$('#adminBar').innerHTML = `<div class="container container--wide adminbar__in">
+      <span class="adminbar__brand"><img class="logo--dark" src="assets/logo.png" alt="" width="36" height="36"><img class="logo--light" src="assets/logo-light.png" alt="" width="36" height="36"><b>${HW.t('a_title')}</b>${HW.CONFIG.demoMode ? '<span class="demo-pill">DEMO</span>' : ''}</span>
+      <span class="adminbar__act"><button class="icon-btn" data-act="a-theme" aria-label="${HW.t('theme')}" title="${HW.t('theme')}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      <button class="lang-btn" data-act="a-lang">${HW.lang === 'ar' ? 'EN' : 'عربي'}</button>
+      <button class="btn btn--ghost" data-act="a-exit">${HW.t('a_exit')}</button></span></div>`;
+  }
+
   function paint() {
+    if (!layer) return;
+    paintBar();
     const root = HW.$('#adminRoot');
-    if (!HW.api.ownerOk()) { gate(root); return; }
+    if (!HW.api.ownerOk()) { gate(root); HW.applyI18n(); return; }
     const focusId = document.activeElement && document.activeElement.id, selStart = document.activeElement && document.activeElement.selectionStart;
     const newLeads = S.leads.filter((l) => l.status === 'new').length, unpaid = S.jobs.filter((j) => ['ready', 'delivered'].includes(j.status) && !j.paid).length;
     const j = S.open && S.jobs.find((x) => x.id === S.open);
     root.innerHTML = `
-      <div class="acct-head"><div><h2>${HW.t('a_title')}</h2>${HW.CONFIG.demoMode ? '<span class="demo-pill">DEMO</span>' : ''}</div>
+      <div class="acct-head"><div><h2>${HW.t(TITLES[S.tab])}</h2></div>
         <div class="btn-row"><a class="btn btn--ghost" href="staff.html">${HW.t('a_staff_board')}</a><button class="btn btn--ghost" data-act="logout">${HW.t('logout')}</button></div></div>
       ${S.owner && S.owner.isDefault && S.tab !== 'settings' ? `<div class="banner banner--warn"><b>${HW.t('a_default_pw')}</b> <button class="linklike" data-tab="settings">${HW.t('a_default_pw_p')}</button></div>` : ''}
       <div class="tabs2 tabs2--scroll">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'active' : ''}" data-tab="${k}">${HW.t(l)}${k === 'leads' && newLeads ? ` <em class="dotn">${newLeads}</em>` : ''}${k === 'orders' && unpaid ? ` <em class="dotn">${unpaid}</em>` : ''}</button>`).join('')}</div>
       ${{ overview: overviewHtml, orders: ordersHtml, schedule: scheduleHtml, customers: customersHtml, leads: leadsHtml, services: servicesHtml, settings: settingsHtml }[S.tab]()}
       ${j ? drawerHtml(j) : ''}`;
     HW.applyI18n();
+    { const dt = HW.$('#dTime'); if (dt) fillSlots(dt, HW.$('#dDate').value, dt.dataset.cur); }
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(selStart, selStart); } catch { /* not a text field */ } } }
   }
 
@@ -306,6 +395,12 @@
     const kind = a.dataset.act, id = S.open;
     switch (kind) {
       case 'logout': await HW.api.ownerLogout(); paint(); break;
+      case 'a-exit': close(); break;
+      case 'a-lang': HW.$('#langBtn').click(); break;
+      case 'a-theme': HW.$('#themeBtn').click(); break;
+      case 'add-appt': apptDialog({ date: a.dataset.date || '', name: a.dataset.name || '', phone: a.dataset.phone || '' }); break;
+      case 'resched': { const date = HW.$('#dDate').value, time = HW.$('#dTime').value; if (!date || !time) { HW.toast(HW.t('err_booking')); break; } await act(() => HW.api.rescheduleJob(id, { date, time }), 'a_moved'); break; }
+      case 'delete-order': if (confirm(HW.t('a_delete_confirm'))) { S.open = null; await act(() => HW.api.deleteJob(id), 'saved'); } break;
       case 'csv-orders': csv('heroworks-orders.csv', JOB_HEAD, filtered().map(jobRow)); break;
       case 'csv-cust': csv('heroworks-customers.csv', ['Name', 'Phone', 'Orders', 'Spent KD', 'Last order', 'Registered', 'Cars'], customers().map((c) => [c.name, '+' + c.phone, c.jobs.length, c.spent.toFixed(3), c.last ? new Date(c.last).toLocaleDateString('en-GB') : '', c.registered ? 'yes' : 'no', [...c.cars.values()].map((x) => HW.carName(x, 'en')).join(' | ')])); break;
       case 'cust': S.tab = 'customers'; S.cust = a.dataset.phone; S.open = null; paint(); break;
@@ -336,24 +431,42 @@
 
   function beep() { try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = 0.06; o.start(); o.stop(c.currentTime + 0.18); } catch { /* sound is optional */ } }
 
-  HW.boot(() => {
-    const root = HW.$('#adminRoot');
-    root.onclick = onClick;
+  /* ---------- the layer that sits on top of the site ---------- */
+  function ensureLayer() {
+    if (layer) return;
+    layer = document.createElement('div'); layer.id = 'adminLayer'; layer.className = 'adminlayer'; layer.hidden = true;
+    layer.innerHTML = '<header class="adminbar" id="adminBar"></header><div class="container container--wide adminroot" id="adminRoot"></div><div id="printSheet" class="print-sheet"></div>';
+    document.body.appendChild(layer);
+    const root = layer.querySelector('#adminRoot');
+    layer.addEventListener('click', onClick);
     root.oninput = (e) => {
       const id = e.target.id;
       if (id === 'fQ') { S.q = e.target.value; paint(); } else if (id === 'fSvc') { S.svcQ = e.target.value; paint(); }
     };
     root.onchange = (e) => {
       const id = e.target.id;
-      if (id === 'fStatus') S.fStatus = e.target.value; else if (id === 'fPaid') S.fPaid = e.target.value; else if (id === 'fFrom') S.from = e.target.value; else if (id === 'fTo') S.to = e.target.value; else return;
+      if (id === 'fStatus') S.fStatus = e.target.value; else if (id === 'fPaid') S.fPaid = e.target.value; else if (id === 'fFrom') S.from = e.target.value; else if (id === 'fTo') S.to = e.target.value;
+      else if (id === 'dDate') { fillSlots(HW.$('#dTime'), e.target.value, ''); return; } else return;
       paint();
     };
-    root.onkeydown = (e) => { if (e.key === 'Enter') { const r = e.target.closest('tr[data-open],tr[data-cust]'); if (r) r.click(); } if (e.key === 'Escape' && S.open) { S.open = null; paint(); } };
-    (HW.api.ownerOk() ? load() : Promise.resolve()).then(() => { S.seen = new Set(S.jobs.map((j) => j.id)); paint(); });
-  });
+    layer.onkeydown = (e) => {
+      if (e.key === 'Enter') { const r = e.target.closest('tr[data-open],tr[data-cust]'); if (r) r.click(); }
+      if (e.key === 'Escape' && S.open) { S.open = null; paint(); }
+    };
+    if (!wrapped) { wrapped = true; const prev = HW.refresh; HW.refresh = () => { prev(); if (isOpen()) paint(); }; }
+  }
+  async function open() {
+    await HW.api.ready; ensureLayer();
+    layer.hidden = false; document.body.classList.add('admin-open'); window.scrollTo(0, 0);
+    if (HW.api.ownerOk()) { try { await load(); } catch { /* signed out meanwhile */ } }
+    S.seen = new Set(S.jobs.map((j) => j.id)); paint();
+    setTimeout(() => { const f = layer.querySelector('#oUser'); if (f) f.focus(); }, 50);
+  }
+  function close() { if (!layer) return; layer.hidden = true; document.body.classList.remove('admin-open'); S.open = null; document.title = document.title.replace(/^● /, ''); }
+  HW.admin = { open, close, isOpen };
 
   HW.api.onChange(() => {
-    if (!HW.api.ownerOk()) return;
+    if (!isOpen() || !HW.api.ownerOk()) return;
     const ae = document.activeElement;
     load().then(() => {
       const fresh = S.seen ? S.jobs.filter((j) => !S.seen.has(j.id) && Date.now() - new Date(j.createdAt) < 600000) : [];
@@ -361,8 +474,8 @@
       if (fresh.length && !S.quiet) { HW.toast(HW.t('a_new_order')); beep(); document.title = '● ' + document.title.replace(/^● /, ''); }
       if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.id !== 'fQ' && ae.id !== 'fSvc') return; // do not disturb typing
       paint();
-    });
+    }).catch(() => {});
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = document.title.replace(/^● /, ''); });
-  setInterval(() => { const ae = document.activeElement; if (!document.hidden && HW.api.ownerOk() && !(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) && !S.open) paint(); }, 60000);
+  setInterval(() => { const ae = document.activeElement; if (isOpen() && !document.hidden && HW.api.ownerOk() && !(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) && !S.open && !document.querySelector('.modal')) paint(); }, 60000);
 })();

@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const HW = window.HW;
-  if (!document.body || ['staff', 'admin'].includes(document.body.dataset.page)) return;
+  if (!document.body || ['staff'].includes(document.body.dataset.page)) return;
   const KEY = 'hw3_chat';
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const load = () => HW.store.get(KEY, null) || { open: false, msgs: [], step: 'start', d: { services: [] } };
@@ -14,7 +14,7 @@
 
   const CAT_WORDS = {
     polish: /polish|بوليش|تلميع/i, wash: /wash|غسيل|غسل|تنظيف/i, thermal: /tint|thermal|insulat|عازل|تظليل|حراري/i, ppf: /ppf|film|protection|حماية|فيلم/i,
-    wheels: /wheel|rim|جنط|رنج/i, glass: /glass|windshield|زجاج|شبك/i, paint: /paint|body|dent|wrap|صبغ|دهان|حدادة|رش|تغيير لون/i,
+    wheels: /wheel|rim|جنط|رنج|رنق/i, glass: /glass|windshield|زجاج|شبك/i, paint: /paint|body|dent|wrap|صبغ|دهان|حدادة|رش|تغيير لون/i,
     dashcam: /dash ?cam|داش/i, elec: /electric|carplay|program|برمجة|كهرباء/i, maint: /oil|service|brake|maint|زيت|صيانة|فرامل|فحص/i
   };
   const INTENT = {

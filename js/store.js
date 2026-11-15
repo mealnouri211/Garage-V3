@@ -76,7 +76,7 @@
   }
 
   /* ---------- staff (demo PIN) ---------- */
-  /* The owner counts as staff too: signing in to admin.html also opens staff.html. */
+  /* The owner counts as staff too: signing in to the owner back office also opens the workshop board (staff.html). */
   const ownerOk = () => sessionStorage.getItem(K.ownerSess) === '1';
   const staffOk = () => sessionStorage.getItem(K.staff) === '1' || ownerOk();
   const needOwner = () => { if (!ownerOk()) throw fail('owner_only'); };
@@ -126,7 +126,7 @@
     if (walkIn) needStaff(); else if (!u) throw fail('not_logged_in');
     if (!d.items || !d.items.length) throw fail('empty');
     const car = d.car; if (!car) throw fail('no_car');
-    const dur = HW.cartDuration(d.items, car);
+    const dur = d.durationMin > 0 ? Math.round(d.durationMin) : HW.cartDuration(d.items, car);
     let appt = null;
     if (d.appointment && d.appointment.date) {
       appt = new Date(`${d.appointment.date}T${d.appointment.time || '09:00'}:00`);
@@ -142,8 +142,8 @@
       car, items: d.items.map((it) => ({ pid: it.pid, qty: it.qty, sel: it.sel || {}, price: it.price })),
       total: d.items.reduce((s, it) => s + it.price, 0), durationMin: dur,
       appointment: appt ? { date: d.appointment.date, time: d.appointment.time } : null,
-      startFrom: start.toISOString(), status: walkIn ? 'received' : 'booked',
-      createdAt: nowIso(), receivedAt: walkIn ? nowIso() : null, startedAt: null,
+      startFrom: start.toISOString(), status: walkIn && !appt ? 'received' : 'booked',
+      createdAt: nowIso(), receivedAt: walkIn && !appt ? nowIso() : null, startedAt: null,
       etaAt: HW.sched.addWork(start, dur).toISOString(), readyAt: null, deliveredAt: null,
       bay: null, camera: !!d.cameraConsent, cameraConsent: !!d.cameraConsent,
       notes: d.notes || '', payment: d.payment || 'cash', paid: false, paidAt: null, internalNote: '', lang: d.lang || 'ar', updates: [], approvals: []
@@ -210,6 +210,19 @@
     return mutate(id, (j) => { j.paid = !!paid; j.paidAt = paid ? nowIso() : null; if (method) j.payment = method; });
   }
   async function setInternalNote(id, text) { return mutate(id, (j) => { j.internalNote = String(text || '').slice(0, 1000); }); }
+  /* Owner/staff: move a booked appointment to another day or time. */
+  async function rescheduleJob(id, { date, time, durationMin }) {
+    return mutate(id, (j) => {
+      if (j.status !== 'booked') throw fail('too_late');
+      const appt = new Date(`${date}T${time || '09:00'}:00`); if (isNaN(appt)) throw fail('bad_details');
+      j.appointment = { date, time }; j.startFrom = appt.toISOString();
+      if (durationMin > 0) j.durationMin = Math.round(durationMin);
+      j.etaAt = HW.sched.addWork(appt, j.durationMin).toISOString();
+      j.updates.push({ id: uid('n'), at: nowIso(), kind: 'eta' });
+    });
+  }
+  /* Owner only: remove a booking completely (cancel keeps it on record, this does not). */
+  async function deleteJob(id) { needOwner(); write(K.jobs, allJobs().filter((j) => j.id !== id)); emit(); return true; }
   async function assignBay(id, bay) { return mutate(id, (j) => { j.bay = bay ? Number(bay) : null; }); }
   async function setCamera(id, on) { return mutate(id, (j) => { if (on && !j.cameraConsent) throw fail('no_consent'); j.camera = !!on; }); }
   /* The customer decides whether their car may be watched. Turning it off hides the camera at once. */
@@ -364,7 +377,7 @@
   HW.api = {
     ready: SEED_READY, normPhone, onChange: (f) => { listeners.add(f); return () => listeners.delete(f); },
     register, login, logout, me, saveCar, removeCar,
-    staffOk, staffLogin, staffLogout, ownerOk, ownerLogin, ownerLogout, ownerInfo, changeOwner, listUsers, setPaid, setInternalNote,
+    staffOk, staffLogin, staffLogout, ownerOk, ownerLogin, ownerLogout, ownerInfo, changeOwner, listUsers, setPaid, setInternalNote, rescheduleJob, deleteJob,
     slots, createJob, listJobs, getJob, setStatus, adjustEta, assignBay, setCamera, setCameraConsent, addUpdate, requestApproval, decideApproval, cancelJob,
     addLead, listLeads, setLeadStatus, seedDemo, resetDemo, wipeAll, remainingMin
   };

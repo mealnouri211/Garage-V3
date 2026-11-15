@@ -21,6 +21,14 @@
       return;
     }
     const cat = HW.findCat(p.cat);
+    HW.setSeo({
+      title: () => `${HW.L(p.name)} | HeroWorks`,
+      desc: () => `${HW.L(p.desc)}`.slice(0, 200),
+      path: `product.html?id=${p.id}`,
+      ld: { '@context': 'https://schema.org', '@type': p.type === 'part' ? 'Product' : 'Service', name: p.name.en, alternateName: p.name.ar, description: p.desc.en,
+        ...(p.type === 'part' ? { brand: { '@type': 'Brand', name: 'HeroWorks' } } : { provider: { '@type': 'AutoRepair', name: 'HeroWorks', telephone: '+96597409444' }, areaServed: { '@type': 'Country', name: 'Kuwait' } }),
+        offers: { '@type': 'Offer', priceCurrency: 'KWD', price: String(p.base), availability: 'https://schema.org/InStock', url: `https://heroworkskw.com/product.html?id=${p.id}` } }
+    });
     HW.$('#crumbs').innerHTML = `<a href="index.html">${HW.t('home')}</a><span>/</span><a href="shop.html">${HW.t('shop')}</a><span>/</span><a href="shop.html?cat=${cat.id}">${HW.L(cat.name)}</a><span>/</span><span>${HW.L(p.name)}</span>`;
 
     const groups = p.groups.map((g) => `

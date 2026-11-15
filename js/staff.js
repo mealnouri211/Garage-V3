@@ -50,7 +50,7 @@
   function baysHtml() {
     return `<div class="bays">${Array.from({ length: HW.CONFIG.bays }, (_, i) => {
       const n = i + 1, j = S.jobs.find((x) => x.bay === n && ['received', 'in_progress', 'qc'].includes(x.status));
-      return `<div class="bay ${j ? 'busy' : ''}"><small>${HW.t('bay')} ${n}</small><b>${j ? esc(HW.carName(j.car, HW.lang)) : HW.t('free')}</b>${j ? `<span class="muted">${j.id} · ${HW.jobProgress(j).pct}%</span>` : ''}</div>`;
+      return `<div class="bay ${j ? 'busy' : ''}"><small>${HW.t('bay')} ${n}</small><b>${j ? esc(HW.carName(j.car, HW.lang)) : HW.t('free')}</b>${j ? `<span class="muted" dir="ltr">${j.id} · ${HW.jobProgress(j).pct}%</span>` : ''}</div>`;
     }).join('')}</div>`;
   }
 
@@ -206,7 +206,7 @@
     if (!HW.api.staffOk()) { gate(root); return; }
     const tabs = [['board', 'tab_board'], ['leads', 'tab_leads'], ['pricing', 'tab_pricing'], ['settings', 'tab_settings']];
     root.innerHTML = `
-      <div class="acct-head"><div><h2>${HW.t('staff_title')}</h2>${HW.CONFIG.demoMode ? `<span class="demo-pill">DEMO</span>` : ''}</div><button class="btn btn--ghost" data-act="logout">${HW.t('logout')}</button></div>
+      <div class="acct-head"><div><h2>${HW.t('staff_title')}</h2>${HW.CONFIG.demoMode ? `<span class="demo-pill">DEMO</span>` : ''}</div><div class="btn-row">${HW.api.ownerOk() ? `<button class="btn btn--gold" data-act="to-owner">${HW.t('a_title')}</button>` : ''}<button class="btn btn--ghost" data-act="logout">${HW.t('logout')}</button></div></div>
       <div class="tabs2">${tabs.map(([k, l]) => `<button class="${S.tab === k ? 'active' : ''}" data-tab="${k}">${HW.t(l)}${k === 'leads' && S.leads.some((x) => x.status === 'new') ? ' •' : ''}</button>`).join('')}</div>
       ${S.tab === 'board' ? boardHtml() : S.tab === 'leads' ? leadsHtml() : S.tab === 'pricing' ? pricingHtml() : settingsHtml()}`;
     HW.applyI18n();
@@ -219,6 +219,7 @@
     const job = id && S.jobs.find((j) => j.id === id);
     if (kind === 'toggle') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); paint(); return; }
     if (kind === 'showdone') { S.showDone = !S.showDone; paint(); return; }
+    if (kind === 'to-owner') { try { sessionStorage.setItem('hw3_openadmin', '1'); } catch { /* ignore */ } location.href = 'index.html'; return; }
     if (kind === 'logout') { await HW.api.staffLogout(); paint(); return; }
     if (kind === 'next') {
       const to = NEXT[job.status][0];

@@ -10,7 +10,7 @@
 (() => {
   'use strict';
   const HW = window.HW;
-  /* ---- catalog overrides set by the owner (admin.html → Services): price, old price, visibility, duration ---- */
+  /* ---- catalog overrides set by the owner (owner back office → Services): price, old price, visibility, duration ---- */
   const CAT_KEY = 'hw3_catalog';
   HW.ALL_PRODUCTS = HW.PRODUCTS.slice();           // every item, including the ones the owner hid
   HW.ALL_PRODUCTS.forEach((p) => { p._base = p.base; p._was = p.was; });

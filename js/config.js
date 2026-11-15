@@ -35,7 +35,7 @@
     }
   });
 
-  /* Settings the owner changes in admin.html are saved in the browser and laid over the defaults above. */
+  /* Settings the owner changes in the owner back office are saved in the browser and laid over the defaults above. */
   const HW = window.HW, KEY = 'hw3_settings';
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
   const apply = (ov) => {

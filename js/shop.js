@@ -38,6 +38,8 @@
   }
 
   HW.boot(() => {
+    const cat0 = HW.findCat(filter.cat);
+    if (cat0) HW.setSeo({ title: () => `${HW.L(cat0.name)} | HeroWorks`, desc: () => `${HW.L(cat0.name)}: ${HW.t('seo_shop_d')}`, path: `shop.html?cat=${cat0.id}` });
     renderChips(); renderProducts();
     const sel = HW.$('#sortSel');
     sel.innerHTML = [['default', 'sort_default'], ['low', 'sort_low'], ['high', 'sort_high'], ['off', 'sort_off']]

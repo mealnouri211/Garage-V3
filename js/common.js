@@ -150,9 +150,9 @@
           <li><a href="tel:${C.tel}" dir="ltr">${C.phone}</a></li>
           <li><a href="https://wa.me/${C.wa}" target="_blank" rel="noopener">${HW.t('wa_us')}</a></li>
           <li><a href="${C.maps}" target="_blank" rel="noopener">${HW.t('open_maps')}</a></li>
-          <li><a href="contact.html">${HW.t('contact_title')}</a></li>
+          <li><a href="contact.html">${HW.t('contact_link')}</a></li>
           <li><a href="account.html">${HW.t('nav_track')}</a></li>
-          <li><a href="staff.html" class="muted">${HW.t('staff_link')}</a> · <a href="admin.html" class="muted">${HW.t('owner_link')}</a></li>
+          <li><a href="staff.html" class="muted">${HW.t('staff_link')}</a></li>
         </ul></div>
       </div>
       <div class="container footer__inner"><span>${HW.t('footer')}</span><span class="pay"><i>Apple Pay</i><i>K-Net</i><i>Deema</i><i>Taly</i></span></div>
@@ -169,10 +169,28 @@
     $$('[data-i18n]').forEach((el) => { el.innerHTML = HW.t(el.dataset.i18n); });
     $$('[data-i18n-ph]').forEach((el) => { el.placeholder = HW.t(el.dataset.i18nPh); });
     $$('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', HW.t(el.dataset.i18nAria)));
-    const tk = document.body.dataset.title;
-    document.title = (tk ? HW.t(tk) + ' | ' : '') + 'HeroWorks';
+    const tk = document.body.dataset.title, seo = document.body.dataset.seo;
+    if (HW.titleOverride) document.title = HW.titleOverride();
+    else if (seo) {
+      document.title = HW.t('seo_' + seo + '_t');
+      const md = document.querySelector('meta[name="description"]'); if (md) md.content = HW.t('seo_' + seo + '_d');
+    } else document.title = (tk ? HW.t(tk) + ' | ' : '') + 'HeroWorks';
   }
   HW.applyI18n = applyI18n;
+
+  /* Per-page search tags for pages whose content depends on the URL (a product, a category). */
+  HW.setSeo = ({ title, desc, path, ld }) => {
+    HW.titleOverride = title;
+    const set = (sel, make, attr, val) => { let el = document.querySelector(sel); if (!el) { el = make(); document.head.appendChild(el); } el.setAttribute(attr, val); };
+    const mk = (tag, attrs) => () => { const el = document.createElement(tag); Object.keys(attrs).forEach((k) => el.setAttribute(k, attrs[k])); return el; };
+    const url = 'https://heroworkskw.com/' + path;
+    set('link[rel="canonical"]', mk('link', { rel: 'canonical' }), 'href', url);
+    set('meta[property="og:url"]', mk('meta', { property: 'og:url' }), 'content', url);
+    set('meta[property="og:title"]', mk('meta', { property: 'og:title' }), 'content', title());
+    if (desc) { set('meta[name="description"]', mk('meta', { name: 'description' }), 'content', desc()); set('meta[property="og:description"]', mk('meta', { property: 'og:description' }), 'content', desc()); }
+    if (ld) { let s = document.getElementById('ld-page'); if (!s) { s = document.createElement('script'); s.type = 'application/ld+json'; s.id = 'ld-page'; document.head.appendChild(s); } s.textContent = JSON.stringify(ld); }
+    document.title = title();
+  };
 
   function mountLayout() {
     $('#site-header').innerHTML = headerHtml();
@@ -198,8 +216,29 @@
   HW.boot = (render) => {
     HW.refresh = () => { mountLayout(); render(); applyI18n(); };
     // wait for the demo data and the signed-in account, then draw the page
-    Promise.all([HW.api.ready, HW.api.me()]).then(([, u]) => { HW.user = u; HW.refresh(); });
+    Promise.all([HW.api.ready, HW.api.me()]).then(([, u]) => {
+      HW.user = u; HW.refresh();
+      // coming back from the workshop board with the owner signed in
+      try { if (sessionStorage.getItem('hw3_openadmin')) { sessionStorage.removeItem('hw3_openadmin'); HW.loadAdmin(); } } catch { /* ignore */ }
+    });
   };
+
+  /* Owner entrance: not linked anywhere. Tap the copyright line in the footer 5 times quickly.
+     The back office script is only downloaded at that moment and opens on top of the page you are on. */
+  HW.loadAdmin = () => new Promise((resolve) => {
+    if (HW.admin) { resolve(HW.admin.open()); return; }
+    const s = document.createElement('script'); s.src = 'js/admin.js';
+    s.onload = () => resolve(HW.admin.open());
+    document.head.appendChild(s);
+  });
+  (() => {
+    let taps = [];
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.footer__inner > span:first-child')) return;
+      const now = Date.now(); taps = taps.filter((t) => now - t < 3500); taps.push(now);
+      if (taps.length >= 5) { taps = []; HW.loadAdmin(); }
+    });
+  })();
 
   /* Pull a product + its selection state from the cart into a readable line */
   HW.lineHtml = (it, { editable = false } = {}) => {
