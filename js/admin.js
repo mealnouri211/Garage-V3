@@ -1,6 +1,6 @@
-/* Owner back office: overview, bookings, schedule (add / move / cancel / delete), customers, inquiries, services & prices, settings.
-   It is not a separate page: common.js loads this file on demand (secret gesture) and it opens as a full-screen layer on top of the site.
-   Signs in with the owner username + password (see store.js). DEMO-LEVEL SECURITY: data lives in this browser. */
+/* Owner back office (admin.html): overview, bookings, schedule (add / move / cancel / delete), customers, inquiries, services & prices, settings.
+   There is no separate owner login page: the owner types the owner username + password into the normal sign-in form (login.js) and lands here.
+   Anyone who opens this page without an owner session is sent to login.html. DEMO-LEVEL SECURITY: data lives in this browser. */
 (() => {
   const HW = window.HW;
   const S = { tab: 'overview', range: '30', jobs: [], leads: [], users: [], owner: null, q: '', fStatus: '', fPaid: '', from: '', to: '', open: null, cust: null, svcQ: '', seen: null, quiet: false, err: '' };
@@ -33,19 +33,6 @@
   const jobRow = (j) => [j.id, new Date(j.createdAt).toLocaleString('en-GB'), j.customer.name, '+' + j.customer.phone, HW.carName(j.car, 'en'), j.items.map((i) => (HW.findProduct(i.pid) ? HW.findProduct(i.pid).name.en : i.pid)).join(' + '),
     j.startFrom ? new Date(j.startFrom).toLocaleString('en-GB') : '', j.status, j.payment, j.paid ? 'paid' : 'unpaid', j.total.toFixed(3), j.internalNote || ''];
   const JOB_HEAD = ['Order', 'Created', 'Customer', 'Phone', 'Car', 'Services', 'Appointment', 'Status', 'Payment method', 'Payment', 'Total KD', 'Internal note'];
-
-  /* ---------- gate ---------- */
-  function gate(root) {
-    root.innerHTML = `<form class="panel gate" id="ownerForm"><h2>${HW.t('a_login_t')}</h2><p class="muted">${HW.t('a_login_p')}</p>
-      <div class="field"><label for="oUser">${HW.t('a_user')}</label><input id="oUser" autocomplete="username" dir="ltr" autocapitalize="none"></div>
-      <div class="field"><label for="oPass">${HW.t('f_password')}</label><input id="oPass" type="password" autocomplete="current-password" dir="ltr"></div>
-      <div class="err" id="oErr" role="alert"></div><button class="btn btn--gold btn--block">${HW.t('sign_in')}</button>
-      ${HW.CONFIG.demoMode ? `<div class="demo-box"><b>${HW.t('demo_account')}</b><br><span dir="ltr">owner · owner1234</span></div>` : ''}</form>`;
-    HW.$('#ownerForm').onsubmit = async (e) => {
-      e.preventDefault();
-      try { await HW.api.ownerLogin({ user: HW.$('#oUser').value, password: HW.$('#oPass').value }); await load(); S.seen = new Set(S.jobs.map((j) => j.id)); paint(); } catch (ex) { HW.$('#oErr').textContent = HW.t('err_' + (ex.code || 'generic')); }
-    };
-  }
 
   /* ---------- overview ---------- */
   const inRange = (j) => {
@@ -364,7 +351,7 @@
     if (!layer) return;
     paintBar();
     const root = HW.$('#adminRoot');
-    if (!HW.api.ownerOk()) { gate(root); HW.applyI18n(); return; }
+    if (!HW.api.ownerOk()) { location.replace('login.html'); return; }
     const focusId = document.activeElement && document.activeElement.id, selStart = document.activeElement && document.activeElement.selectionStart;
     const newLeads = S.leads.filter((l) => l.status === 'new').length, unpaid = S.jobs.filter((j) => ['ready', 'delivered'].includes(j.status) && !j.paid).length;
     const j = S.open && S.jobs.find((x) => x.id === S.open);
@@ -394,8 +381,8 @@
     const a = t.closest('[data-act]'); if (!a) return;
     const kind = a.dataset.act, id = S.open;
     switch (kind) {
-      case 'logout': await HW.api.ownerLogout(); paint(); break;
-      case 'a-exit': close(); break;
+      case 'logout': await HW.api.ownerLogout(); location.href = 'index.html'; break;
+      case 'a-exit': location.href = 'index.html'; break;
       case 'a-lang': HW.$('#langBtn').click(); break;
       case 'a-theme': HW.$('#themeBtn').click(); break;
       case 'add-appt': apptDialog({ date: a.dataset.date || '', name: a.dataset.name || '', phone: a.dataset.phone || '' }); break;
@@ -464,6 +451,9 @@
   }
   function close() { if (!layer) return; layer.hidden = true; document.body.classList.remove('admin-open'); S.open = null; document.title = document.title.replace(/^● /, ''); }
   HW.admin = { open, close, isOpen };
+  if (document.body.dataset.page === 'admin') {
+    HW.boot(() => { if (!HW.api.ownerOk()) { location.replace('login.html'); return; } if (!isOpen()) open(); });
+  }
 
   HW.api.onChange(() => {
     if (!isOpen() || !HW.api.ownerOk()) return;

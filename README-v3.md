@@ -4,10 +4,11 @@ Static website (HTML/CSS/JS, no build). Open `index.html`, or upload the whole f
 V3 stores its data under `hw3_*` keys, so it does not mix with V1/V2 on the same address.
 
 ## What's new in V3
-- **Owner back office** (part of the main site, no separate page, no public link)
-  - How to open it: on any page, tap the copyright line at the very bottom of the footer 5 times quickly. It opens on top of the page you are on (the address does not change), without the footer, WhatsApp button or assistant.
-  - From the workshop board there is an "Owner back office" button (only shown when you are signed in as owner).
-  - Login: `owner` / `owner1234` (demo). Change it in Settings -> Security.
+- **Owner back office** (`admin.html`, not linked anywhere on the site)
+  - How to get in: use the normal **Sign in** page (login.html). Type the owner username in the first box and the owner password in the second. A customer types a phone number and lands in their account; the owner types the username and lands on the back office. A wrong owner password shows the same "wrong phone number or password" message as for customers.
+  - Opening `admin.html` directly without being signed in as owner sends you to the sign-in page. The page has no footer, WhatsApp button or assistant.
+  - The workshop board has an "Owner back office" button (only when you are signed in as owner).
+  - Login: `owner` / `owner1234` (demo). Change it in Settings -> Security (the username must contain a letter).
   - Overview: orders, booked value, collected, still to collect, new requests, "needs attention" list, today's cars, 14-day chart, top services, value by payment method.
   - Orders: search, filters (status / paid / dates), CSV export, detail drawer (customer + WhatsApp/call, change status, mark paid, payment-link message for Deema/Taly, internal note, print job sheet, cancel).
   - Schedule (next 14 days): **add** an appointment (phone/walk-in customer, car, services with editable prices, day and time), **move** it, **cancel** it, or **delete** it. Customers:  (spend, history, cars, CSV), Inquiries (from the chat assistant).

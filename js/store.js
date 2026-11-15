@@ -95,7 +95,7 @@
   async function ownerInfo() { needOwner(); const o = await ensureOwner(); return { user: o.user, isDefault: !!o.isDefault }; }
   async function changeOwner({ user, password }) {
     needOwner(); user = String(user || '').trim();
-    if (user.length < 3) throw fail('bad_details');
+    if (user.length < 3 || !/[^\d\s+()-]/.test(user)) throw fail('bad_user_owner');
     if (String(password || '').length < 8) throw fail('weak_password_owner');
     const salt = uid('o'); write(K.owner, { user, salt, hash: await hashPw(password, salt), isDefault: false }); return { user, isDefault: false };
   }

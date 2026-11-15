@@ -219,7 +219,7 @@
     const job = id && S.jobs.find((j) => j.id === id);
     if (kind === 'toggle') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); paint(); return; }
     if (kind === 'showdone') { S.showDone = !S.showDone; paint(); return; }
-    if (kind === 'to-owner') { try { sessionStorage.setItem('hw3_openadmin', '1'); } catch { /* ignore */ } location.href = 'index.html'; return; }
+    if (kind === 'to-owner') { location.href = 'admin.html'; return; }
     if (kind === 'logout') { await HW.api.staffLogout(); paint(); return; }
     if (kind === 'next') {
       const to = NEXT[job.status][0];

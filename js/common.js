@@ -216,29 +216,8 @@
   HW.boot = (render) => {
     HW.refresh = () => { mountLayout(); render(); applyI18n(); };
     // wait for the demo data and the signed-in account, then draw the page
-    Promise.all([HW.api.ready, HW.api.me()]).then(([, u]) => {
-      HW.user = u; HW.refresh();
-      // coming back from the workshop board with the owner signed in
-      try { if (sessionStorage.getItem('hw3_openadmin')) { sessionStorage.removeItem('hw3_openadmin'); HW.loadAdmin(); } } catch { /* ignore */ }
-    });
+    Promise.all([HW.api.ready, HW.api.me()]).then(([, u]) => { HW.user = u; HW.refresh(); });
   };
-
-  /* Owner entrance: not linked anywhere. Tap the copyright line in the footer 5 times quickly.
-     The back office script is only downloaded at that moment and opens on top of the page you are on. */
-  HW.loadAdmin = () => new Promise((resolve) => {
-    if (HW.admin) { resolve(HW.admin.open()); return; }
-    const s = document.createElement('script'); s.src = 'js/admin.js';
-    s.onload = () => resolve(HW.admin.open());
-    document.head.appendChild(s);
-  });
-  (() => {
-    let taps = [];
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.footer__inner > span:first-child')) return;
-      const now = Date.now(); taps = taps.filter((t) => now - t < 3500); taps.push(now);
-      if (taps.length >= 5) { taps = []; HW.loadAdmin(); }
-    });
-  })();
 
   /* Pull a product + its selection state from the cart into a readable line */
   HW.lineHtml = (it, { editable = false } = {}) => {

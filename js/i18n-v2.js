@@ -3,6 +3,7 @@
   'use strict';
   const I = window.HW.I18N;
   Object.assign(I.ar, {
+    err_bad_user_owner: "اسم المستخدم يجب أن يحتوي على حرف واحد على الأقل.",
     seo_home_t: "هيرو ووركس | غسيل وبوليش وحماية الطلاء والعزل الحراري في الكويت",
     seo_home_d: "مركز هيرو ووركس للعناية بالسيارات وتعديلها في الكويت: غسيل وبوليش، حماية الطلاء، عزل حراري، داش كام، صبغ وحدادة، برمجة وصيانة. اعرف سعر سيارتك واحجز موعدك أونلاين.",
     seo_shop_t: "الخدمات والمنتجات | هيرو ووركس الكويت",
@@ -212,6 +213,7 @@
     how3_t: 'احجز موعدك', how3_p: 'اختر وقتاً متاحاً وسجّل بحسابك.', how4_t: 'تابع سيارتك', how4_p: 'التقدم والصور والكاميرا من هاتفك.'
   });
   Object.assign(I.en, {
+    err_bad_user_owner: "The username must contain at least one letter.",
     seo_home_t: "HeroWorks | Car Wash, Polish, Paint Protection & Window Tint in Kuwait",
     seo_home_d: "HeroWorks is a car care and modification center in Kuwait: washing, polishing, paint protection, thermal window tint, dash cams, paint & bodywork, programming and maintenance. See your car's exact price and book online.",
     seo_shop_t: "Services & Products | HeroWorks Kuwait",

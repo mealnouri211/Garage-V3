@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const HW = window.HW;
-  if (!document.body || ['staff'].includes(document.body.dataset.page)) return;
+  if (!document.body || ['staff', 'admin'].includes(document.body.dataset.page)) return;
   const KEY = 'hw3_chat';
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const load = () => HW.store.get(KEY, null) || { open: false, msgs: [], step: 'start', d: { services: [] } };

@@ -856,7 +856,6 @@ body.admin-open .fab,body.admin-open .chat-fab,body.admin-open .chat{display:non
 .adminbar__act{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
 .adminroot{padding-block:1.4rem 3rem}
 .adminroot .acct-head h2{font-size:1.4rem}
-.footer__inner > span:first-child{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .modal__panel--wide{width:min(720px,100%)}
 .grid2f{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}@media (max-width:560px){.grid2f{grid-template-columns:1fr}}
 .ap__car{margin:.4rem 0 .8rem}
@@ -869,3 +868,5 @@ body.admin-open .fab,body.admin-open .chat-fab,body.admin-open .chat{display:non
 .mini:hover{background:var(--gold);color:#111}
 .sgroup input[type=date],.sgroup select{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:.5rem .7rem;min-height:42px;font:inherit}
 @media (max-width:560px){.adminbar__brand .demo-pill{display:none}.adminbar__act{gap:.35rem}.adminbar__in{gap:.5rem}}
+
+body[data-page="admin"] #site-header,body[data-page="admin"] #site-footer{display:none}
