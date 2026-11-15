@@ -3,6 +3,12 @@
    Anyone who opens this page without an owner session is sent to login.html. DEMO-LEVEL SECURITY: data lives in this browser. */
 (() => {
   const HW = window.HW;
+  /* If only some of the updated files were copied, say which one is old instead of showing an empty page. */
+  const old = [];
+  if (!HW.bootBare || !HW.toggleLang) old.push('js/common.js');
+  if (!HW.api || !HW.api.approveJob || !HW.api.updateJob) old.push('js/store.js');
+  if (!HW.I18N || !HW.I18N.en.a_requests) old.push('js/i18n-v2.js');
+  if (old.length) { document.body.innerHTML = '<div style="padding:2rem;font:16px/1.7 sans-serif;color:#eee;direction:ltr"><b>Some files are out of date. Replace these with the new versions, then reload (Ctrl+Shift+R):</b><br>' + old.join('<br>') + '</div>'; return; }
   const S = { tab: 'overview', range: '30', jobs: [], leads: [], users: [], owner: null, q: '', fStatus: '', fPaid: '', from: '', to: '', open: null, cust: null, svcQ: '', seen: null, quiet: false, err: '', sub: 'appts' };
   let layer = null, ready = false;
   const ALL_STATUS = [...HW.STAGES, 'cancelled'];
